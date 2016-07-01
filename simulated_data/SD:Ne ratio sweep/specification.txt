@@ -1,0 +1,7 @@
+Ne = 10000
+species depth = c*Ne
+
+2 species trees
+5 species
+
+1000 gene trees per species tree

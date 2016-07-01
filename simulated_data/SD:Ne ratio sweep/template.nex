@@ -1,0 +1,147 @@
+#NEXUS
+[written Thu Jun 30 12:14:40 JST 2016 by Mesquite  version 3.10 (build 765) at Snow.local/133.58.244.118]
+
+BEGIN TAXA;
+	TITLE Species;
+	DIMENSIONS NTAX=5;
+	TAXLABELS
+		A B C D E 
+	;
+
+END;
+
+
+
+BEGIN TAXA;
+	TITLE Individuals;
+	DIMENSIONS NTAX=10;
+	TAXLABELS
+		a1 a2 b1 b2 c1 c2 d1 d2 e1 e2 
+	;
+
+END;
+
+
+BEGIN TaxaAssociation;
+TITLE Individuals;
+TAXA Species ,  Individuals;
+ASSOCIATES 
+
+	A /  a1 a2 , 
+	B /  b1 b2 , 
+	C /  c1 c2 , 
+	D /  d1 d2 , 
+	E /  e1 e2
+
+;
+
+END;
+
+
+Begin MESQUITE;
+		MESQUITESCRIPTVERSION 2;
+		TITLE AUTO;
+		tell ProjectCoordinator;
+		timeSaved 1467256480744;
+		getEmployee #mesquite.minimal.ManageTaxa.ManageTaxa;
+		tell It;
+			setID 0 6383121793841713872;
+			tell It;
+				setSelected  5;
+				attachments ;
+			endTell;
+			setID 1 5955191043209309587;
+		endTell;
+		getWindow;
+		tell It;
+			suppress;
+			setResourcesState false false 515;
+			setPopoutState 300;
+			setExplanationSize 0;
+			setAnnotationSize 0;
+			setFontIncAnnot 0;
+			setFontIncExp 0;
+			setSize 1359 636;
+			setLocation 8 23;
+			setFont SanSerif;
+			setFontSize 10;
+			getToolPalette;
+			tell It;
+			endTell;
+			desuppress;
+		endTell;
+		getEmployee  #mesquite.minimal.ManageTaxa.ManageTaxa;
+		tell It;
+			showTaxa #6383121793841713872 #mesquite.lists.TaxonList.TaxonList;
+			tell It;
+				setTaxa #6383121793841713872;
+				getWindow;
+				tell It;
+					newAssistant  #mesquite.lists.TaxonListCurrPartition.TaxonListCurrPartition;
+					newAssistant  #mesquite.assoc.TaxonListAssoc.TaxonListAssoc;
+				tell It;
+					getAssociationsTask Stored Taxa Associations (id# 1456);
+					resetAssociation;
+					getEmployee #mesquite.assoc.StoredAssociations.StoredAssociations;
+					tell It;
+						setCurrentAssociation 0;
+					endTell;
+				endTell;
+					setExplanationSize 30;
+					setAnnotationSize 20;
+					setFontIncAnnot 0;
+					setFontIncExp 0;
+					setSize 844 564;
+					setLocation 8 23;
+					setFont SanSerif;
+					setFontSize 10;
+					getToolPalette;
+					tell It;
+					endTell;
+					setActive;
+				endTell;
+				showWindow;
+				getEmployee #mesquite.lists.ColorTaxon.ColorTaxon;
+				tell It;
+					setColor Red;
+					removeColor off;
+				endTell;
+				getEmployee #mesquite.lists.TaxonListAnnotPanel.TaxonListAnnotPanel;
+				tell It;
+					togglePanel off;
+				endTell;
+			endTell;
+			showTaxa #5955191043209309587 #mesquite.lists.TaxonList.TaxonList;
+			tell It;
+				setTaxa #5955191043209309587;
+				getWindow;
+				tell It;
+					newAssistant  #mesquite.lists.TaxonListCurrPartition.TaxonListCurrPartition;
+					setExplanationSize 30;
+					setAnnotationSize 20;
+					setFontIncAnnot 0;
+					setFontIncExp 0;
+					setSize 844 564;
+					setLocation 8 23;
+					setFont SanSerif;
+					setFontSize 10;
+					getToolPalette;
+					tell It;
+					endTell;
+				endTell;
+				showWindow;
+				getEmployee #mesquite.lists.ColorTaxon.ColorTaxon;
+				tell It;
+					setColor Red;
+					removeColor off;
+				endTell;
+				getEmployee #mesquite.lists.TaxonListAnnotPanel.TaxonListAnnotPanel;
+				tell It;
+					togglePanel off;
+				endTell;
+			endTell;
+		endTell;
+		endTell;
+end;
+
+
