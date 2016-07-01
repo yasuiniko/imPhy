@@ -3,6 +3,21 @@ library('phytools')
 source('remove_random_tips.R')
 # Load Libraries
 
+#   ########################################################################
+#   # some code for loading nexus files
+#   filepath <- 'phyclust/simulated_data/SD:Ne ratio sweep/r_nexus'
+#   files <- list.files(path=filepath, full.names=TRUE)
+
+#   # remove Species Trees
+#   tfiles <- files[!unlist(lapply(files, function(f) grepl("Species_Trees", f)))]
+
+#   trees_list <- lapply(tfiles, read.nexus)
+#   list_of_multiPhylos_of_smaller_trees <- lapply(trees_list, 
+#                                                  drop_tips,
+#                                                  num_to_drop=4)
+#    ########################################################################
+
+
 # Set output files -- fname=the output in the format needed, fnameTRUE=the true distances
 fname <- "test.txt"
 fnameTRUE <- "trueTest.txt"
