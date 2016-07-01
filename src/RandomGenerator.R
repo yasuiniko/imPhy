@@ -1,5 +1,6 @@
 library('ape')
 library('phytools')
+source('remove_random_tips.R')
 # Load Libraries
 
 # Set output files -- fname=the output in the format needed, fnameTRUE=the true distances
