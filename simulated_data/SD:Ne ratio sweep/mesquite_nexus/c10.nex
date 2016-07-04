@@ -1,5 +1,5 @@
 #NEXUS
-[written Thu Jun 30 15:01:45 JST 2016 by Mesquite  version 3.10 (build 765) at Snow.local/133.58.244.118]
+[written Fri Jul 01 18:29:12 JST 2016 by Mesquite  version 3.10 (build 765) at Snow.local/133.58.244.118]
 
 BEGIN TAXA;
 	TITLE Species;
@@ -38,8 +38,8 @@ ASSOCIATES
 END;
 
 
-BEGIN TREES[!'Parameters: Tree simulator: Uniform speciation (Yule). [seed: 1467266199610]'];
-	Title Simulated_Trees;
+BEGIN TREES[!'Parameters: Tree simulator: Uniform speciation (Yule). [seed: 1467266199610$2]'];
+	Title Species_Trees;
 	ID 01559fe1954f69;
 	LINK Taxa = Species;
 	TRANSLATE
@@ -54,7 +54,7 @@ BEGIN TREES[!'Parameters: Tree simulator: Uniform speciation (Yule). [seed: 1467
 END;
 
 
-BEGIN TREES[!'Parameters: Tree simulator: Coalescence Contained within Current Tree. [seed: 1467266299324]'];
+BEGIN TREES[!'Parameters: Tree simulator: Coalescence Contained within Current Tree. [seed: 1467266299324$2]'];
 	Title Gene_Trees_for_Species_Tree_1;
 	ID 01559fe2fba771;
 	LINK Taxa = Individuals;
@@ -1073,7 +1073,7 @@ BEGIN TREES[!'Parameters: Tree simulator: Coalescence Contained within Current T
 END;
 
 
-BEGIN TREES[!'Parameters: Tree simulator: Coalescence Contained within Current Tree. [seed: 1467266400138]'];
+BEGIN TREES[!'Parameters: Tree simulator: Coalescence Contained within Current Tree. [seed: 1467266400138$2]'];
 	Title Gene_Trees_for_Species_Tree_2;
 	ID 01559fe4840972;
 	LINK Taxa = Individuals;
@@ -2096,7 +2096,7 @@ Begin MESQUITE;
 		MESQUITESCRIPTVERSION 2;
 		TITLE AUTO;
 		tell ProjectCoordinator;
-		timeSaved 1467266505508;
+		timeSaved 1467365353066;
 		getEmployee #mesquite.minimal.ManageTaxa.ManageTaxa;
 		tell It;
 			setID 0 6383121793841713872;
@@ -2134,7 +2134,7 @@ Begin MESQUITE;
 					newAssistant  #mesquite.lists.TaxonListCurrPartition.TaxonListCurrPartition;
 					newAssistant  #mesquite.assoc.TaxonListAssoc.TaxonListAssoc;
 				tell It;
-					getAssociationsTask Stored Taxa Associations (id# 3875);
+					getAssociationsTask Stored Taxa Associations (id# 1395);
 					resetAssociation;
 					getEmployee #mesquite.assoc.StoredAssociations.StoredAssociations;
 					tell It;
