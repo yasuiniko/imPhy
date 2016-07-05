@@ -94,6 +94,9 @@ if (!is.null(opts$infile)) {
     n_leaves <- length(trees[[1]]$tip.label)
     n_individuals <- replicate(n_species, n_leaves / n_species)
 
+    # V1 is species, V2...Vn is individuals. NA means no individual in that slot.
+    si_link <- read.csv(opts$infile, header=FALSE, nrows=n_species)
+
 } else {
     n_species <- length(opts$individuals)
     n_individuals <- as.numeric(opts$individuals)
