@@ -39,32 +39,52 @@ if __name__ == "__main__":
         # read file
         fpath = os.path.join(fdir, fname)
         with open(fpath, 'r') as f:
-            skipping = True
             in_tree = False
+            in_associates = False
+            associates = []
             fcontents = []
 
-            # identify tree and put it in fcontents
             for line in f:
+
+                # identify species/individuals associations
+                if in_associates:
+                    assoc = line.split('/')
+
+                    if len(assoc) > 1:
+                        species = assoc[0].strip()
+                        inds = assoc[1].replace(',', '').strip().split(' ')
+                        associates.append([species]+inds)
+
+                    if ';' in line:
+                        in_associates = False
+                        continue
+
+                if "ASSOCIATES" in line:
+                    in_associates = True
+
+                # identify trees
                 if "BEGIN TREES" in line:
                     in_tree = True
-                    skipping = False
                     line = "BEGIN TREES;\n"
-                
-                if in_tree and "Title" in line:
-                    tree_name = line.split("Title ")[-1][:-2]
 
-                if not skipping:
+                if in_tree:
                     fcontents.append(line)
 
-                if "END" in line and in_tree:
-                    in_tree = False
+                    if "Title" in line:
+                        tree_name = line.split("Title ")[-1][:-2]
 
-                    # write fcontents to file
-                    outname = "{}_{}.nex".format(fname[:-4], tree_name)
-                    outpath = os.path.join(r_dir, outname)
-                    with open(outpath, 'w') as g:
-                        for line in fcontents:
-                            g.write(line)
+                    if "END" in line:
+                        in_tree = False
 
-                    fcontents = []
+                        # write fcontents to file
+                        outname = "{}_{}.nex".format(fname[:-4], tree_name)
+                        outpath = os.path.join(r_dir, outname)
+                        with open(outpath, 'w') as g:
+                            for line in associates:
+                                [g.write(x+", ") for x in line]
+                                g.write('\n')
+                            for line in fcontents:
+                                g.write(line)
+
+                        fcontents = []
 
