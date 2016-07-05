@@ -35,21 +35,12 @@ source('tools.R')
 # Load Libraries
 
 # Some useful functions
-drop_n_tips <- function(tree, n){
-    indices <- sample(as.numeric(length(tree$tip.label)), n)
-    drop.tip(tree, tip=indices)
-}
-
-drop_random_tips <- function(tree, rand_fun){
-    tips <- sample(as.numeric(length(tree$tip.label)), rand_fun())
-    drop.tip(tree, tip=tips)
-}
-
-drop_one <- function(tree){
+drop_tips <- function(tree, gen_tips){
+    # for random: gen_tips <- rbinom(1, num_tips, prob_missing)
     dist_matrix <- cophenetic(tree)
-
-    # select a leaf to ignore (JUST ONE FOR NOW)
-    sel <- sample(as.numeric(length(tree$tip.label)), 1)
+    
+    # select a leaf to ignore
+    sel <- sample(n_leaves, gen_tips(n_leaves))
 
     # write the actual distance
     distances <- as.vector(as.dist(dist_matrix))
@@ -84,6 +75,7 @@ opts <- docopt(doc)
 fname <- paste(opts$outfile, '.txt', sep='')
 fnameTRUE <- paste(opts$outfile, '_true.txt', sep='')
 prob_missing <- assert_valid_prob(as.numeric(opts$prob))
+gen_n_tips <- function(max_tips) 1
 
 if (!is.null(opts$infile)) {
     # get trees
@@ -113,4 +105,4 @@ invisible(write(c(n_species, n_leaves), fname, append=TRUE))
 invisible(lapply(n_individuals, write, file=fname, append=TRUE))
 invisible(write("\n", fname, append=TRUE))
 
-invisible(lapply(trees, function(x) write_matrices(drop_one(x))))
+invisible(lapply(trees, function(x) write_matrices(drop_tips(x, gen_n_tips))))
