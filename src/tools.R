@@ -1,3 +1,5 @@
+two_digits <- function(x) format(round(x, 2), nsmall=2)
+
 valid_prob <- function(x) if (0<=x & x<=1) TRUE else FALSE
 
 invalid_probability_error <- function(x) {

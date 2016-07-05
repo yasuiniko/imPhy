@@ -38,7 +38,7 @@ source('tools.R')
 drop_tips <- function(tree, gen_tips){
     # for random: gen_tips <- rbinom(1, num_tips, prob_missing)
     dist_matrix <- cophenetic(tree)
-    
+
     # select a leaf to ignore
     sel <- sample(n_leaves, gen_tips(n_leaves))
 
@@ -58,11 +58,11 @@ write_matrices <- function(distances){
     alteredDist <- distances[2]
 
     # write actual distance matrix
-    write(paste(c(format(actualDist, digits=2)), collapse=" "), 
+    write(paste(sapply(actualDist, two_digits), collapse=' '),
           fnameTRUE,
           append=TRUE)
     # write altered distance matrix
-    write(paste(c(format(alteredDist, digits=2)), collapse=" "),
+    write(paste(sapply(alteredDist, two_digits), collapse=' '),
           fname,
           append=TRUE)
 }
@@ -72,8 +72,8 @@ options(digits=2, error=traceback)
 opts <- docopt(doc)
 
 # Set output files -- fname=the output in the format needed, fnameTRUE=the true distances
-fname <- paste(opts$outfile, '.txt', sep='')
-fnameTRUE <- paste(opts$outfile, '_true.txt', sep='')
+fname <- paste0(opts$outfile, '.txt')
+fnameTRUE <- paste0(opts$outfile, '_true.txt')
 prob_missing <- assert_valid_prob(as.numeric(opts$prob))
 gen_n_tips <- function(max_tips) 1
 
