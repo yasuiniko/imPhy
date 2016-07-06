@@ -1,8 +1,10 @@
 """
-Usage: generateTrees.py [options]
+Usage: generateTrees.py [<c>... options]
 
 Options:
   -h, --help            Show this help message.
+  <c>                   Values of SD:Ne to consider
+                              [default: 0.6 0.7 0.8 0.9 1 2 4 6 8 10 20]
   -g, --n_gene_trees=.  Number of gene trees.            [default: 1000]
   -i, --n_ind=.         Number of individuals per species.  [default: 2]
   -n, --Ne=.            Effective population size.      [default: 10000]
@@ -89,8 +91,8 @@ if __name__ == "__main__":
     gene_formula = 'c{}_genes_{}.nex'
     sp_formula = 'c{}_species.nex'
 
-    for c in [0.6, 0.7, 0.8, 0.9, 1, 2, 4, 6, 8, 10, 20]:
-        sp_depth = Ne*c
+    for c in args['<c>']:
+        sp_depth = Ne*float(c)
 
         sp, gn = gen_trees(n_sp_trees, n_gene_trees, n_sp, n_ind, sp_depth)
 
