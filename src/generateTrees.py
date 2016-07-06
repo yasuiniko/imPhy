@@ -1,6 +1,21 @@
+"""
+Usage: generateTrees.py [options]
+
+Options:
+  -h, --help            Show this help message.
+  -g, --n_gene_trees=.  Number of gene trees.            [default: 1000]
+  -i, --n_ind=.         Number of individuals per species.  [default: 2]
+  -n, --Ne=.            Effective population size.      [default: 10000]
+  -o, --outfolder=.     Path to output folder.
+                 [default: ../simulated_data/SD:Ne ratio sweep/py_nexus]
+  -s, --n_sp=.          Number of species per species tree. [default: 5]
+  -t, --n_sp_trees=.    Number of species trees.            [default: 2]
+
+"""
 import sys
 import os
 import string
+import docopt
 import dendropy as dp
 
 # Some annoying but necessary abbreviations
@@ -60,15 +75,17 @@ def gen_trees(n_sp_trees, n_gene_trees, n_sp, n_ind, sp_depth, Ne=10000):
     return dp.TreeList(sp_trees), gene_trees
 
 if __name__ == "__main__":
-    n_sp_trees = 2
-    n_gene_trees = 1000
-    n_sp = 5
-    n_ind = 2 # can be int or list
-    Ne = 10000
-    py_nexus = "../simulated_data/SD:Ne ratio sweep/py_nexus"
+    args = docopt.docopt(__doc__)
+    print(args)
+    n_sp_trees = int(args['--n_sp_trees'])
+    n_gene_trees = int(args['--n_gene_trees'])
+    n_sp = int(args['--n_sp'])
+    n_ind = int(args['--n_ind'])
+    Ne = int(args['--Ne'])
+    outfolder = args['--outfolder']
 
-    if not os.path.isdir(py_nexus):
-        os.makedirs(py_nexus)
+    if not os.path.isdir(outfolder):
+        os.makedirs(outfolder)
     gene_formula = 'c{}_genes_{}.nex'
     sp_formula = 'c{}_species.nex'
 
@@ -77,11 +94,11 @@ if __name__ == "__main__":
 
         sp, gn = gen_trees(n_sp_trees, n_gene_trees, n_sp, n_ind, sp_depth)
 
-        sp_path = os.path.join(py_nexus, sp_formula.format(c))
+        sp_path = os.path.join(outfolder, sp_formula.format(c))
         sp.write(path=sp_path, schema="nexus")
         
         for i, treelist in enumerate(gn):
 
-            outfile = os.path.join(py_nexus, gene_formula.format(c, i+1))
+            outfile = os.path.join(outfolder, gene_formula.format(c, i+1))
             treelist.write(path=outfile, schema="nexus")
 
