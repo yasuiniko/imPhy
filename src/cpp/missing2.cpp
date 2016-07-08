@@ -162,7 +162,7 @@ int main(int argc, const char * argv[]) {
             f << endl;
         }
         
-        sprintf(fname, "./data/true_%s.txt", argv[1]);
+        sprintf(fname, "./data/%s_true.txt", argv[1]);
         
         ifstream in2(fname);
         float trueDistance;
