@@ -32,11 +32,10 @@ removes their leaves with probability p.' -> doc
 library('docopt')
 library('ape')
 source('tools.R')
-# Load Libraries
 
 # Some useful functions
 drop_tips <- function(tree, n_tips_to_drop){
-    
+
     # organize distance matrix
     d <- cophenetic(tree)
     dist_matrix <- d[order(rownames(d)), order(colnames(d))]

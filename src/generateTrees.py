@@ -10,7 +10,7 @@ Options:
   -n, --Ne=.            Effective population size.      [default: 10000]
   -o, --outfolder=.     Path to output folder.
                  [default: ../simulated_data/SD:Ne ratio sweep/py_nexus]
-  -s, --n_sp=.          Number of species per species tree. [default: 5]
+  -s, --n_sp=.          Number of species.                  [default: 5]
   -t, --n_sp_trees=.    Number of species trees.            [default: 2]
 
 """
@@ -57,8 +57,9 @@ def gen_trees(n_sp_trees, n_gene_trees, n_sp, n_ind, sp_depth, Ne=10000):
 
     # generate species trees and set population size of each edge to 10000
     # must explicitly make list, or cannot set pop_size
-    sp_trees = list(map(lambda x: species_tree(species, sp_depth),
-                        range(n_sp_trees)))
+    sp_trees = dp.TreeList(map(lambda x: species_tree(species, sp_depth),
+                               range(n_sp_trees)),
+                           taxon_namespace=species)
     for tree in sp_trees:
         for edge in tree.postorder_edge_iter():
             setattr(edge, 'pop_size', Ne)
@@ -74,11 +75,12 @@ def gen_trees(n_sp_trees, n_gene_trees, n_sp, n_ind, sp_depth, Ne=10000):
                                                range(n_gene_trees)))
     gene_trees = list(map(make_ctrees, sp_trees))
 
-    return dp.TreeList(sp_trees), gene_trees
+    return sp_trees, gene_trees
 
 if __name__ == "__main__":
+
+    # get args
     args = docopt.docopt(__doc__)
-    print(args)
     n_sp_trees = int(args['--n_sp_trees'])
     n_gene_trees = int(args['--n_gene_trees'])
     n_sp = int(args['--n_sp'])
@@ -86,6 +88,7 @@ if __name__ == "__main__":
     Ne = int(args['--Ne'])
     outfolder = args['--outfolder']
 
+    # set up filesystem
     if not os.path.isdir(outfolder):
         os.makedirs(outfolder)
     gene_formula = 'c{}_genes_{}.nex'
