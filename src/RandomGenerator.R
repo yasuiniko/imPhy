@@ -3,7 +3,7 @@
     RandomGenerator.R <individuals>... -e=<genes> [-p=<prob> -o=<outfile>]
     RandomGenerator.R <infile> -s=<species> [-p=<prob> -o=<outfile>]
 
-options:
+Options:
  -h --help                          Show this screen.
 
  -e <genes>, --genes <genes>        Number of genes.

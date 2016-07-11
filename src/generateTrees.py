@@ -11,7 +11,7 @@ Options:
   -o, --outfolder=.     Path to output folder.
                  [default: ../simulated_data/SD:Ne ratio sweep/py_nexus]
   -s, --n_sp=.          Number of species.                  [default: 5]
-  -t, --n_sp_trees=.    Number of species trees.            [default: 2]
+  -t, --n_sp_trees=.    Number of species trees.            [default: 1]
 
 """
 import sys
@@ -77,24 +77,20 @@ def gen_trees(n_sp_trees, n_gene_trees, n_sp, n_ind, sp_depth, Ne=10000):
 
     return sp_trees, gene_trees
 
-if __name__ == "__main__":
-
-    # get args
-    args = docopt.docopt(__doc__)
-    n_sp_trees = int(args['--n_sp_trees'])
-    n_gene_trees = int(args['--n_gene_trees'])
-    n_sp = int(args['--n_sp'])
-    n_ind = int(args['--n_ind'])
-    Ne = int(args['--Ne'])
-    outfolder = args['--outfolder']
-
+def generateTrees(c_list,
+                  n_gene_trees,
+                  n_sp,
+                  n_ind,
+                  Ne,
+                  outfolder,
+                  n_sp_trees=1):
     # set up filesystem
     if not os.path.isdir(outfolder):
         os.makedirs(outfolder)
     gene_formula = 'c{}_genes_{}.nex'
     sp_formula = 'c{}_species.nex'
 
-    for c in args['<c>']:
+    for c in c_list:
         sp_depth = Ne*float(c)
 
         sp, gn = gen_trees(n_sp_trees, n_gene_trees, n_sp, n_ind, sp_depth)
@@ -106,4 +102,19 @@ if __name__ == "__main__":
 
             outfile = os.path.join(outfolder, gene_formula.format(c, i+1))
             treelist.write(path=outfile, schema="nexus")
+
+if __name__ == "__main__":
+
+    # get args
+    args = docopt.docopt(__doc__)
+    n_sp_trees = int(args['--n_sp_trees'])
+    n_gene_trees = int(args['--n_gene_trees'])
+    n_sp = int(args['--n_sp'])
+    n_ind = int(args['--n_ind'])
+    Ne = int(args['--Ne'])
+    outfolder = args['--outfolder']
+
+    generateTrees(args['<c>'], n_gene_trees, n_sp, n_ind, Ne, outfolder, n_sp_trees)
+
+
 
