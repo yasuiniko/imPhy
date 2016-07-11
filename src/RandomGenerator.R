@@ -77,7 +77,7 @@ opts <- docopt(doc)
 fname <- paste0(opts$outfile, '.txt')
 fnameTRUE <- paste0(opts$outfile, '_true.txt')
 prob_missing <- assert_valid_prob(as.numeric(opts$prob))
-n_tips_to_drop <- function(max_tips) 1
+n_tips_to_drop <- function(max_tips) rbinom(1, max_tips, prob_missing)
 
 if (!is.null(opts$infile)) {
     # get trees
