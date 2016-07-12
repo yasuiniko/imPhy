@@ -19,7 +19,7 @@ def setup(name_formula, names):
 if __name__ == "__main__":
 
     # edit these lists to your heart's desire
-    c = [0.6, 0.7, 0.8, 0.9, 1, 2, 4, 6, 8, 10, 20]
+    c = [0.6, 0.7, 0.8, 0.9, 1, 2, 4, 6, 8, 10, 20].reverse()
     genes = [10, 20, 30, 40, 50, 60]
     inds = [4, 5, 6, 10]
     methods = [1, 2]
@@ -37,5 +37,5 @@ if __name__ == "__main__":
     # feel free also to change the experiment name path
     name = "../experiments/c{c}_g{genes}_i{inds}_m{method}_p{prob}_s{sp}"
 
-    list(map(setup(tup, root.format(name + opts), names),
+    list(map(setup(root.format(name + opts), names),
              itertools.product(c, genes, inds, methods, probs, species)))
