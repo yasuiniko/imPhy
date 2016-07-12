@@ -19,12 +19,12 @@ def setup(name_formula, names):
 if __name__ == "__main__":
 
     # edit these lists to your heart's desire
-    c = [0.6, 0.7, 0.8, 0.9, 1, 2, 4, 6, 8, 10, 20].reverse()
-    genes = [10, 20, 30, 40, 50, 60]
-    inds = [4, 5, 6, 10]
-    methods = [1, 2]
-    probs = [0.1, 0.2, 0.5]
-    species = [2, 3, 4, 5]
+    c = [0.6, 0.7, 0.8, 0.9, 1]#, 2, 4, 6, 8, 10, 20].reverse()
+    genes = [10, 20]#, 30, 40, 50, 60]
+    inds = [4, 5]#, 6, 10]
+    methods = [1]#, 2]
+    probs = [0.1]#, 0.2, 0.5]
+    species = [2, 3,]# 4, 5]
 
     # put together the python call
     root = "python3 pipeline.py generate {}"
