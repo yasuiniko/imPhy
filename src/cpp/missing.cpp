@@ -35,7 +35,7 @@ int translatePosToSpecies(int nSp, int *nInds, int i){
 
 
 int main(int argc, const char * argv[]) {
-    char inFile[20];
+    char inFile[50];
     sprintf(inFile, "./data/%s.txt", argv[1]);
     ifstream inp(inFile); // open the argument file
     
