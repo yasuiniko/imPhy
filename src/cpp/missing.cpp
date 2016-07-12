@@ -94,6 +94,7 @@ int main(int argc, const char * argv[]) {
     try{
         GRBEnv env;
         GRBModel model(env);
+        model.getEnv().set("BarHomogeneous", "1");
         
         GRBVar ***x=new GRBVar**[nGenes];
         for(int t=0;t<nGenes;t++){
