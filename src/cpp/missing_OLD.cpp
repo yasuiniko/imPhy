@@ -94,7 +94,6 @@ int main(int argc, const char * argv[]) {
     try{
         GRBEnv env;
         GRBModel model(env);
-        
         model.getEnv().set("BarHomogeneous", "1");
         
         GRBVar ***x=new GRBVar**[nGenes];
@@ -106,12 +105,12 @@ int main(int argc, const char * argv[]) {
                     if (TreeDistances.at(t)[i][j]==-1){
                         char name[10];
                         sprintf(name, "x(%d,%d,%d)", t, i, j);
-                        x[t][i][j]=model.addVar(0,1,0,'C',name);
+                        x[t][i][j]=model.addVar(0,m,0,'C',name);
                     }
                     else{
                         char name[10];
                         sprintf(name, "x(%d,%d,%d)", t, i, j);
-                        x[t][i][j]=model.addVar(TreeDistances.at(t)[i][j]/m,TreeDistances.at(t)[i][j]/m,0,'C',name);
+                        x[t][i][j]=model.addVar(TreeDistances.at(t)[i][j],TreeDistances.at(t)[i][j],0,'C',name);
                     }
                 }
             }
@@ -124,16 +123,16 @@ int main(int argc, const char * argv[]) {
         
         // ALL SPECIES OBJECTIVE
         
-        /*for(int t1=0;t1<nGenes;t1++){
-            for(int t2=t1+1;t2<nGenes;t2++){
-                for(int i=0;i<nLeaves;i++){
-                    for(int j=i+1;j<nLeaves;j++){
-                        if(translatePosToSpecies(nSpecies, nIndividuals, i)!=translatePosToSpecies(nSpecies, nIndividuals, j))
-                            obj+=(x[t1][i][j]-x[t2][i][j])*(x[t1][i][j]-x[t2][i][j]);
-                    }
-                }
-            }
-        }*/
+        //        for(int t1=0;t1<nGenes;t1++){
+        //            for(int t2=t1+1;t2<nGenes;t2++){
+        //                int cnt=0;
+        //                for(int i=0;i<nLeaves;i++){
+        //                    for(int j=i+1;j<nLeaves;j++){
+        //                        obj+=(x[t1][i][j]-x[t2][i][j])*(x[t1][i][j]-x[t2][i][j]);
+        //                    }
+        //                }
+        //            }
+        //        }
         
         // ONLY DIFFERENT SPECIES OBJECTIVE
         
@@ -156,7 +155,7 @@ int main(int argc, const char * argv[]) {
                     for(int j=i+1;j<nLeaves;j++){
                         if(translatePosToSpecies(nSpecies, nIndividuals, i)==translatePosToSpecies(nSpecies, nIndividuals, j)){
                             float b=eps[translatePosToSpecies(nSpecies, nIndividuals, i)]*eps[translatePosToSpecies(nSpecies, nIndividuals, i)];
-                            model.addQConstr((x[t1][i][j]-x[t2][i][j])*(x[t1][i][j]-x[t2][i][j])<=b/(m*m));
+                            model.addQConstr((x[t1][i][j]-x[t2][i][j])*(x[t1][i][j]-x[t2][i][j])<=b);
                         }
                     }
                 }
@@ -173,7 +172,7 @@ int main(int argc, const char * argv[]) {
         for(int t=0;t<nGenes;t++){
             for(int i=0;i<nLeaves;i++){
                 for(int j=i+1;j<nLeaves;j++){
-                    f << x[t][i][j].get(GRB_DoubleAttr_X)*m << "\t";
+                    f << x[t][i][j].get(GRB_DoubleAttr_X) << "\t";
                 }
             }
             f << endl;
@@ -188,7 +187,7 @@ int main(int argc, const char * argv[]) {
                 for(int j=i+1;j<nLeaves;j++){
                     in2 >> trueDistance;
                     if(TreeDistances.at(t)[i][j]==-1){
-                        cout << t << " " << i << " " << j << "\t: " << x[t][i][j].get(GRB_DoubleAttr_X)*m << " vs. " << trueDistance << endl;
+                        cout << t << " " << i << " " << j << "\t: " << x[t][i][j].get(GRB_DoubleAttr_X) << " vs. " << trueDistance << endl;
                     }
                 }
             }
