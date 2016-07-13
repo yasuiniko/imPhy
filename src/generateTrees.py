@@ -14,11 +14,13 @@ Options:
   -t, --n_sp_trees=.    Number of species trees.            [default: 1]
 
 """
-import sys
+
+import decimal
+import dendropy as dp
+import docopt
 import os
 import string
-import docopt
-import dendropy as dp
+import sys
 
 # Some annoying but necessary abbreviations
 taxa_map = dp.TaxonNamespaceMapping.create_contained_taxon_mapping
@@ -29,7 +31,7 @@ def distance_from_root(node):
     """
     This function should exist but is not implemented cleanly in dendropy.
     """
-    dist = 0
+    dist = 0 #Decimal('0')
     while node.parent_node:
         dist += node.edge.length
         node = node.parent_node
@@ -41,11 +43,21 @@ def species_tree(species, sp_depth):
     desired species depth.
     """
     t = bd_tree(birth_rate=1.0, death_rate=0, taxon_namespace=species)
-
+    
+    # # convert distances to Decimals
+    # for e in t.preorder_edge_iter():
+    #         e.length = Decimal(str(e.length))
+    
     max_depth = max(map(distance_from_root, t.leaf_node_iter()))
 
+    # scale distances
     for e in t.preorder_edge_iter():
+        # e.length *= Decimal(str(sp_depth))/max_depth
         e.length *= sp_depth/max_depth
+
+    # # convert back to float
+    # for e in t.preorder_edge_iter():
+    #     e.length = float(e.length)
     
     t.seed_node.edge.length = 0
 

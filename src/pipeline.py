@@ -3,6 +3,7 @@ Usage: pipeline.py generate <outfolder> <c>... [-g=n_gene_trees -i=n_ind -m=meth
        pipeline.py drop <infolder> <n_sp> [-m=method -p=prob --simple]
        pipeline.py impute [-m=method -t=tag]
        pipeline.py impute_all [-m=method]
+       pipeline.py analyze <infolder>
 
 Options:
   -h, --help            Show this help message.
@@ -26,22 +27,16 @@ Options:
   -t, --tag=.           All files with this tag will be imputed.
 """
 
+import docopt
+import itertools
 import os
 import shutil
 import subprocess
-import docopt
 import time
-import itertools
 
+from analyze import analyze
 from generateTrees import generateTrees
-
-def timeit(f, s):
-    bigs = s[0].upper() + s[1:]
-    smalls = s[0].lower() + s[1:]
-    print("{}...".format(bigs))
-    t = time.time()
-    f()
-    print("Done {} in {}s.\n".format(smalls, time.time() - t))
+from tools import timeit
 
 def get_data(fname):
     return fname[-8:-4] != 'true'
@@ -74,7 +69,7 @@ def impute(method, prefix):
     method = "" if method == 1 else method
 
     def helper(fname):
-        name = "{}{}".format(prefix, fname[:-4])
+        name = prefix + fname[:-4]
         program = "./missing{}.o".format(method)
         
         f = lambda: subprocess.check_call([program, name])
@@ -88,7 +83,7 @@ def cleanup(tag_names, infolder, prefix):
         def to(src):
             os.rename(src, os.path.join(dest, os.path.basename(src)))
         return to
-    name = lambda fname, ext: "{}{}{}".format(prefix, fname[:-4], ext)
+    name = lambda fname, ext: prefix + fname[:-4] + ext
 
     # make subdirectories
     def makedir(subdir):
@@ -170,10 +165,14 @@ if __name__ == "__main__":
                                os.listdir(infolder))
         tag_names = list(filter(lambda x: tag in x, basenames))
         prefix = os.path.basename(infolder)
-        prefix = "" if prefix == 'data' else "{}_".format(prefix)
+        if prefix == 'data' or prefix == 'r_nexus':
+            prefix = ""
+        else:
+            prefix = "{}_".format(prefix)
 
         # impute based on tag
         f = lambda: list(map(impute(method, prefix), tag_names))
+        timeit(f, "imputing {} problems".format(len(tag_names)))
         timeit(f, "imputing {} problems".format(len(tag_names)))
 
         if not args['impute']:
@@ -191,3 +190,7 @@ if __name__ == "__main__":
         f = lambda: list(map(impute(method, 'all'),
                              filter(get_data, os.listdir('data'))))
         timeit(f, "imputing all")
+
+    if args['analyze'] or \
+       not (args['--simple'] or args['impute'] or args['impute_all']):
+        analyze(infolder)
