@@ -5,15 +5,7 @@
 
 using namespace std;
 
-class TreeDistance{
-private:
-    int leaf1, leaf2;
-    float distance;
-public:
-    TreeDistance(int l1, int l2, float d){leaf1=l1; leaf2=l2; distance=d;}
-    bool hasLeaf(int l){return l==leaf1||l==leaf2;}
-    float getDistance(){return distance;}
-};
+// COMMENTED TO SIGNAL LATEST VERSION -- 07/12/2016 10:46pm CST, 07/13/2016 12:46pm (?) JST
 
 int translatePosToSpecies(int nSp, int *nInds, int i){
     int *nStart=new int[nSp];
@@ -71,8 +63,10 @@ int main(int argc, const char * argv[]) {
                 if(temp>m){
                     m=temp; // Just to find maximum distance in all trees
                 }
+                cout << i << " " << j << " " << translatePosToSpecies(nSpecies,nIndividuals,i) << " " << translatePosToSpecies(nSpecies,nIndividuals,j) << " " << temp << endl;
                 if(translatePosToSpecies(nSpecies, nIndividuals, i)==translatePosToSpecies(nSpecies, nIndividuals, j)){
                     if(temp>eps[translatePosToSpecies(nSpecies, nIndividuals, i)]){
+                        cout << i << " " << j << " " << temp << endl;
                         eps[translatePosToSpecies(nSpecies, nIndividuals, i)]=temp;
                     }
                 }
@@ -151,7 +145,7 @@ int main(int argc, const char * argv[]) {
         model.setObjective(obj);
         
         for(int t1=0;t1<nGenes;t1++){
-            for(int t2=t1+1;t2<nGenes;t2++){
+            for(int t2=0;t2<nGenes;t2++){
                 for(int i=0;i<nLeaves;i++){
                     for(int j=i+1;j<nLeaves;j++){
                         if(translatePosToSpecies(nSpecies, nIndividuals, i)==translatePosToSpecies(nSpecies, nIndividuals, j)){
@@ -201,6 +195,7 @@ int main(int argc, const char * argv[]) {
     }catch(...){
         cout << "Error during optimization.";
     }
+    
     
     
     return 0;
