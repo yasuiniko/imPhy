@@ -18,6 +18,8 @@ import os
 from subprocess import check_call as cc
 from tools import timeit
 
+from analyze import summary
+
 def setup(name_formula, names):
 
     def one_run(tup):
@@ -30,15 +32,17 @@ if __name__ == "__main__":
     outfolder = args['<outfolder>']
 
     # edit these lists to your heart's desire
-    c = [0.6, 0.7, 0.8, 0.9, 1, 2, 4, 6, 8, 10, 20].reverse()
-    genes = [10, 20, 30, 40, 50, 60]
-    inds = [4, 5, 6, 10]
-    methods = [1, 2]
-    probs = [0.1, 0.2, 0.5]
-    species = [2, 3, 4, 5]
+    # c = [0.6, 0.7, 0.8, 0.9, 1, 2, 4, 6, 8, 10, 20]
+    # c.reverse()
+    # genes = [10, 20, 30, 40, 50, 60]
+    # inds = [4, 5, 6, 10]
+    # methods = [1, 2]
+    # probs = [0.1, 0.2, 0.5]
+    # species = [2, 3, 4, 5]
 
 
-    c = [0.6, 0.7, 0.8, 0.9, 1]#, 2, 4, 6, 8, 10, 20].reverse()
+    c = [0.6, 0.7]#, 0.8, 0.9, 1, 2, 4, 6, 8, 10, 20]
+    c.reverse()
     genes = [10, 20, 30]#, 40, 50, 60]
     inds = [4, 5]#, 6, 10]
     methods = [1]#, 2]
@@ -70,3 +74,4 @@ if __name__ == "__main__":
     f = lambda: list(map(setup(root.format(name + opts), names),
                          product(c, genes, inds, methods, probs, species)))
     timeit(f, "solving all problems")
+    summary(os.path.join("..", outfolder))

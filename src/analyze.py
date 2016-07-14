@@ -9,9 +9,11 @@ Options:
 
 import decimal
 import docopt
-from itertools import chain
+import itertools
 import numpy as np
 import math
+import matplotlib.pyplot as plt
+import pandas as pd
 import os
 
 def vector2matrix(v):
@@ -52,8 +54,8 @@ def get_stats(x):
     to_decimal = lambda x: decimal.Decimal(str(x))
 
     # make distace matrix array
-    imputed = list(chain.from_iterable(map(vector2matrix, vec_list)))
-    original = list(chain.from_iterable(map(vector2matrix, true_list)))
+    imputed = list(itertools.chain.from_iterable(map(vector2matrix, vec_list)))
+    original = list(itertools.chain.from_iterable(map(vector2matrix, true_list)))
 
     sq_err = list(map(lambda x: (x[0] - x[1])**2, zip(imputed, original)))
     imp_sq_err = list(filter(lambda x: x != 0, sq_err))
@@ -74,10 +76,10 @@ def write_to(infolder, sol):
 
     basename = os.path.basename(sol)[:-4]
 
-    def write_stats(x):
+    def write(x):
         with open(os.path.join(stats, basename+'_stats.txt'), 'w') as f:
             list(map(lambda i: f.write(str(i)+" "), x)) 
-    return write_stats
+    return write
 
 def analyze(infolder):
     inf_path = lambda x: os.path.join(infolder, x)
@@ -93,8 +95,70 @@ def analyze(infolder):
 
     list(map(write_stats, zip(solution_files, true_files)))
 
+def summary(expfolder):
+    from_iterable = itertools.chain.from_iterable
+    expfolder = os.path.abspath(expfolder)
+
+    # figure out which experiments were run
+    letter_number = lambda x: x[0].isalpha() and x[1].isdigit()
+    split = lambda x: x.split("_")
+    supertrials = list(filter(letter_number, os.listdir(expfolder)))
+    subtrials = filter(letter_number, os.listdir(os.path.join(expfolder, 
+                                                 supertrials[0],
+                                                 'stats')))
+    superlabels = set(filter(letter_number,
+                             from_iterable(map(split, supertrials))))
+    sublabels = set(filter(letter_number, 
+                           from_iterable(map(split, subtrials))))
+    labels = superlabels | sublabels
+    vals = lambda x: list(map(lambda label: label.split(x)[-1],
+                              filter(lambda label: x in label, labels)))
+    c = vals("c")
+    g = vals("g")
+    i = vals("i")
+    m = vals("m")
+    p = vals("p")
+    s = vals("s")
+    dimensions = list(map(len, (c, g, i, m, p, s)))
+    size = len(c) * len(g) * len(i) * len(m) * len(p) * len(s)
+
+    def get_row(args):
+        infolder, filename, c = args
+        nums = filter(lambda x: x not in "gimps", os.path.basename(infolder))
+        info = list(map(float, ''.join(nums).split("_")))
+        filepath = os.path.join(infolder, "stats", filename)
+
+        try: 
+            row = [c] + info + list(map(float, np.loadtxt(filepath)))
+        except ValueError:
+            row = [float('nan')]*12
+
+        return row
+
+    def get_folder(tup):
+        folder_name = "g{}_i{}_m{}_p{}_s{}".format(*tup[1:])
+        filename = "g{1}_i{2}_m{3}_p{4}_s{5}_c{0}_genes_1_stats.txt".format(*tup)
+        return os.path.join(expfolder, folder_name), filename, tup[0]
+
+    def get_labels(tup):
+        return c[tup[0]], g[tup[1]], i[tup[2]], m[tup[3]], p[tup[4]], s[tup[5]]
+
+    # build data array
+    data = np.empty((size, 12), dtype=float)
+    for ind, index in enumerate(itertools.product(*list(map(range, dimensions)))):
+        data[ind] = get_row(get_folder(get_labels(index)))
+    
+    # put data in a pandas DataFrame
+    cols = ["SD/Ne", "Number of Gene Trees", 
+            "Number of Individuals per Species", "Method", 
+            "Leaf Dropping Probability", "Number of Species", 
+            "IE min", "IE lower quartile", "IE median", 
+            "IE upper quartile", "IE max", "Imputation RMSE"]
+    data = pd.DataFrame(data, columns=cols)
+    data.to_csv(os.path.join(expfolder, "summary.csv"))
+
 if __name__ == '__main__':
     args = docopt.docopt(__doc__)
     infolder = args['<infolder>']
 
-    anlyze(infolder)
+    summary(infolder)

@@ -173,7 +173,6 @@ if __name__ == "__main__":
         # impute based on tag
         f = lambda: list(map(impute(method, prefix), tag_names))
         timeit(f, "imputing {} problems".format(len(tag_names)))
-        timeit(f, "imputing {} problems".format(len(tag_names)))
 
         if not args['impute']:
             f = lambda: cleanup(tag_names, infolder, prefix)
