@@ -5,6 +5,8 @@
 
 using namespace std;
 
+// UPDATED at 11.45pm (CST) 07/14/2016
+
 class TreeDistance{
 private:
     int leaf1, leaf2;
@@ -105,12 +107,12 @@ int main(int argc, const char * argv[]) {
                     if (TreeDistances.at(t)[i][j]==-1){
                         char name[10];
                         sprintf(name, "x(%d,%d,%d)", t, i, j);
-                        x[t][i][j]=model.addVar(0,m,0,'C',name);
+                        x[t][i][j]=model.addVar(0,1,0,'C',name);
                     }
                     else{
                         char name[10];
                         sprintf(name, "x(%d,%d,%d)", t, i, j);
-                        x[t][i][j]=model.addVar(TreeDistances.at(t)[i][j],TreeDistances.at(t)[i][j],0,'C',name);
+                        x[t][i][j]=model.addVar(TreeDistances.at(t)[i][j]/m,TreeDistances.at(t)[i][j]/m,0,'C',name);
                     }
                 }
             }
@@ -139,8 +141,8 @@ int main(int argc, const char * argv[]) {
                 for(int i=0;i<nLeaves;i++){
                     for(int j=i+1;j<nLeaves;j++){
                         if(translatePosToSpecies(nSpecies, nIndividuals, i)==translatePosToSpecies(nSpecies, nIndividuals, j)){
-                            model.addConstr(x[t1][i][j]-x[t2][i][j]<=eps[translatePosToSpecies(nSpecies, nIndividuals, i)]);
-                            model.addConstr(x[t1][i][j]-x[t2][i][j]>=-eps[translatePosToSpecies(nSpecies, nIndividuals, i)]);
+                            model.addConstr(x[t1][i][j]-x[t2][i][j]<=eps[translatePosToSpecies(nSpecies, nIndividuals, i)]/m);
+                            model.addConstr(x[t1][i][j]-x[t2][i][j]>=-eps[translatePosToSpecies(nSpecies, nIndividuals, i)]/m);
                         }
                     }
                 }
@@ -157,7 +159,7 @@ int main(int argc, const char * argv[]) {
         for(int t=0;t<nGenes;t++){
             for(int i=0;i<nLeaves;i++){
                 for(int j=i+1;j<nLeaves;j++){
-                    f << x[t][i][j].get(GRB_DoubleAttr_X) << "\t";
+                    f << m*x[t][i][j].get(GRB_DoubleAttr_X) << "\t";
                 }
             }
             f << endl;
@@ -172,7 +174,7 @@ int main(int argc, const char * argv[]) {
                 for(int j=i+1;j<nLeaves;j++){
                     in2 >> trueDistance;
                     if(TreeDistances.at(t)[i][j]==-1){
-                        cout << t << " " << i << " " << j << "\t: " << x[t][i][j].get(GRB_DoubleAttr_X) << " vs. " << trueDistance << endl;
+                        cout << t << " " << i << " " << j << "\t: " << m*x[t][i][j].get(GRB_DoubleAttr_X) << " vs. " << trueDistance << endl;
                     }
                 }
             }
