@@ -99,8 +99,11 @@ def generateTrees(c_list,
     # set up filesystem
     if not os.path.isdir(outfolder):
         os.makedirs(outfolder)
-    gene_formula = 'c{}_genes_{}.nex'
-    sp_formula = 'c{}_species.nex'
+    if n_sp_trees > 1:
+        gene_formula = 'c{}_g{}_i_{}s_{}_e{}_genes.nex'
+    else:
+        gene_formula = 'c{}_g{}_i{}_s{}_genes.nex'
+    sp_formula = 'species.nex'
 
     for c in c_list:
         sp_depth = Ne*float(c)
@@ -112,7 +115,11 @@ def generateTrees(c_list,
         
         for i, treelist in enumerate(gn):
 
-            outfile = os.path.join(outfolder, gene_formula.format(c, i+1))
+            outfile = os.path.join(outfolder, gene_formula.format(c,
+                                                                  n_gene_trees,
+                                                                  n_ind,
+                                                                  n_sp,
+                                                                  i+1))
             treelist.write(path=outfile, schema="nexus")
 
 if __name__ == "__main__":

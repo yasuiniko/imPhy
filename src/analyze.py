@@ -9,10 +9,12 @@ Options:
 
 import decimal
 import docopt
+from functools import reduce
 import itertools
 import numpy as np
 import math
 import matplotlib.pyplot as plt
+import operator
 import pandas as pd
 import os
 
@@ -64,13 +66,17 @@ def get_stats(x):
     mse = sse/len(imp_sq_err)
     rmse = math.sqrt(mse)
 
+    c_val = list(filter(lambda x: 'c' in x,
+                        os.path.basename(solutions).split("_")))[-1][1:]
+    nrmse = rmse / float(c_val)/10000/2
+    
     p = percentiles_of(imp_err) 
 
-    return p(0), p(25), p(50), p(75), p(100), rmse
+    return p(0), p(25), p(50), p(75), p(100), rmse, nrmse
 
-def write_to(infolder, sol):
+def write_to(batch_folder, sol):
 
-    stats = os.path.join(infolder, "stats")
+    stats = os.path.join(batch_folder, "stats")
     if not os.path.isdir(stats):
         os.makedirs(stats)
 
@@ -81,79 +87,76 @@ def write_to(infolder, sol):
             list(map(lambda i: f.write(str(i)+" "), x)) 
     return write
 
-def analyze(infolder):
-    inf_path = lambda x: os.path.join(infolder, x)
-    files = lambda x: map(lambda y: os.path.join(infolder, x, y),
+def analyze(batch_folder):
+    inf_path = lambda x: os.path.join(batch_folder, x)
+    files = lambda x: map(lambda y: os.path.join(batch_folder, x, y),
                           os.listdir(inf_path(x)))
 
-    true_files = filter(lambda x: "_true.txt" in os.path.basename(x), 
-                        files("data"))
-    solution_files = filter(lambda x: ".sol" in os.path.basename(x),
-                            files("solutions"))
+    get_p = lambda sol: list(filter(lambda x: 'p' in x, sol.split("_")))[-1]
+    true_match = lambda sol: list(filter(lambda f: get_p(sol) in f, true_files))[0]
 
-    write_stats = lambda x: write_to(infolder, x[0])(get_stats(x))
+    true_files = list(filter(lambda x: "_true.txt" in os.path.basename(x), 
+                             files("data")))
+    sol_files = list(filter(lambda x: ".sol" in os.path.basename(x),
+                            files("solutions")))
 
-    list(map(write_stats, zip(solution_files, true_files)))
+    write_stats = lambda x: write_to(batch_folder, x[0])(get_stats(x))
+
+    list(map(write_stats, zip(sol_files, map(true_match, sol_files))))
 
 def summary(expfolder):
     from_iterable = itertools.chain.from_iterable
     expfolder = os.path.abspath(expfolder)
 
     # figure out which experiments were run
-    letter_number = lambda x: x[0].isalpha() and x[1].isdigit()
+    char_num = lambda x: x[0].isalpha() and x[1].isdigit()
     split = lambda x: x.split("_")
-    supertrials = list(filter(letter_number, os.listdir(expfolder)))
-    subtrials = filter(letter_number, os.listdir(os.path.join(expfolder, 
-                                                 supertrials[0],
-                                                 'stats')))
-    superlabels = set(filter(letter_number,
-                             from_iterable(map(split, supertrials))))
-    sublabels = set(filter(letter_number, 
-                           from_iterable(map(split, subtrials))))
+    supertrials = list(filter(char_num, os.listdir(expfolder)))
+    subtrials = filter(char_num, os.listdir(os.path.join(expfolder, 
+                                                         supertrials[0],
+                                                         'stats')))
+    superlabels = set(filter(char_num, from_iterable(map(split, supertrials))))
+    sublabels = set(filter(char_num, from_iterable(map(split, subtrials))))
     labels = superlabels | sublabels
     vals = lambda x: list(map(lambda label: label.split(x)[-1],
                               filter(lambda label: x in label, labels)))
-    c = vals("c")
-    g = vals("g")
-    i = vals("i")
-    m = vals("m")
-    p = vals("p")
-    s = vals("s")
-    dimensions = list(map(len, (c, g, i, m, p, s)))
-    size = len(c) * len(g) * len(i) * len(m) * len(p) * len(s)
+    values = list(map(vals, ['c', 'g', 'i', 's', 'm', 'p']))
+    c, g, i, s, m, p = values
+    dimensions = list(map(len, values))
+    size = reduce(operator.mul, dimensions, 1)
 
     def get_row(args):
-        infolder, filename, c = args
-        nums = filter(lambda x: x not in "gimps", os.path.basename(infolder))
-        info = list(map(float, ''.join(nums).split("_")))
-        filepath = os.path.join(infolder, "stats", filename)
+        batch_folder, filename, tup = args
+        filepath = os.path.join(batch_folder, "stats", filename)
 
         try: 
-            row = [c] + info + list(map(float, np.loadtxt(filepath)))
+            row = tup + list(map(float, np.loadtxt(filepath)))
         except ValueError:
-            row = [float('nan')]*12
+            row = [float('nan')]*13
 
         return row
 
     def get_folder(tup):
-        folder_name = "g{}_i{}_m{}_p{}_s{}".format(*tup[1:])
-        filename = "g{1}_i{2}_m{3}_p{4}_s{5}_c{0}_genes_1_stats.txt".format(*tup)
-        return os.path.join(expfolder, folder_name), filename, tup[0]
+        batch_folder = "c{}_g{}_i{}_s{}".format(*tup[:4])
+        filename = "c{}_g{}_i{}_s{}_m{}_p{}_genes_stats.txt".format(*tup)
+        return os.path.join(expfolder, batch_folder), filename, tup
 
     def get_labels(tup):
-        return c[tup[0]], g[tup[1]], i[tup[2]], m[tup[3]], p[tup[4]], s[tup[5]]
+        get_vals = lambda x: values[x[0]][x[1]]
+        return list(map(get_vals, enumerate(tup)))
 
     # build data array
-    data = np.empty((size, 12), dtype=float)
+    data = np.empty((size, 13), dtype=float)
     for ind, index in enumerate(itertools.product(*list(map(range, dimensions)))):
         data[ind] = get_row(get_folder(get_labels(index)))
     
     # put data in a pandas DataFrame
-    cols = ["SD/Ne", "Number of Gene Trees", 
-            "Number of Individuals per Species", "Method", 
-            "Leaf Dropping Probability", "Number of Species", 
-            "IE min", "IE lower quartile", "IE median", 
-            "IE upper quartile", "IE max", "Imputation RMSE"]
+    cols = ["c", "Number of Gene Trees", 
+            "Number of Individuals per Species", "Number of Species", 
+            "Method", "Leaf Dropping Probability",
+            "Abs Imputation Error (AIE) min", "AIE lower quartile",
+            "AIE median", "AIE upper quartile", "AIE max", "Imputation RMSE",
+            "Imputation NRMSE"]
     data = pd.DataFrame(data, columns=cols)
     data.to_csv(os.path.join(expfolder, "summary.csv"))
 
