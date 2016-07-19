@@ -6,25 +6,22 @@
 Options:
  -h --help                          Show this screen.
 
- -e <genes>, --genes <genes>        Number of genes.
-                                    [default: 1]
+ -e <genes>, --genes <genes>        Number of genes.        [default: 1]
 
- <infile>                           Filepath if using existing trees.
-                                    [default: NULL]
+ <infile>                           Path to nexus file if using existing
+                                    trees.               [default: NULL]
 
  <individuals>                      Number of individuals per species.
-                                    [default: 4]
+                                                            [default: 4]
 
  -o <outfile>, --outfile <outfile>  Root of filepath of outfile.
                                     (script will output outfile.txt and
-                                    outfile_true.txt).
-                                    [default: test]
+                                    outfile_true.txt).   [default: test]
 
  -p <prob>, --prob <prob>           Probability of a leaf going missing.
-                                    [default: 0.2]
+                                                          [default: 0.2]
 
- -s <species>, --species <species>  Number of species.
-                                    [default: 5]
+ -s <species>, --species <species>  Number of species.      [default: 5]
 
 Either reads a .nex file, or creates num_genes trees and randomly 
 removes their leaves with probability p.' -> doc
