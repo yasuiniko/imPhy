@@ -161,15 +161,15 @@ int main(int argc, const char * argv[]) {
         // ALL SPECIES OBJECTIVE
         
         /*for(int t1=0;t1<nGenes;t1++){
-            for(int t2=t1+1;t2<nGenes;t2++){
-                for(int i=0;i<nLeaves;i++){
-                    for(int j=i+1;j<nLeaves;j++){
-                        if(translatePosToSpecies(nSpecies, nIndividuals, i)!=translatePosToSpecies(nSpecies, nIndividuals, j))
-                            obj+=(x[t1][i][j]-x[t2][i][j])*(x[t1][i][j]-x[t2][i][j]);
-                    }
-                }
-            }
-        }*/
+         for(int t2=t1+1;t2<nGenes;t2++){
+         for(int i=0;i<nLeaves;i++){
+         for(int j=i+1;j<nLeaves;j++){
+         if(translatePosToSpecies(nSpecies, nIndividuals, i)!=translatePosToSpecies(nSpecies, nIndividuals, j))
+         obj+=(x[t1][i][j]-x[t2][i][j])*(x[t1][i][j]-x[t2][i][j]);
+         }
+         }
+         }
+         }*/
         
         // ONLY DIFFERENT SPECIES OBJECTIVE
         
