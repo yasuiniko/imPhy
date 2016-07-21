@@ -1,0 +1,55 @@
+Output of GeoMeTree v1.0
+
+2 Trees of 6 taxa given:
+T1=(((A:0.1,C:0.2):0.5,B:0.1):0.6,E:0.3,(D:0.3,F:0.4):0.7);
+T2=(((A:0.1,C:0.2):0.6,E:0.1):0.7,F:0.5,(B:0.3,D:0.4):0.5);
+
+Tree vectors have been normalized to norm 1 !!!
+
+--------------------------------------------------------------------------------
+
+Splits only in T1:
+1	A*B*C	0.489898
+2	D*F	0.571548
+
+Splits only in T2:
+3	A*C*E	0.543305
+4	B*D	0.388075
+
+Splits common to both trees and branch length in T1 and T2:
+5	F	0.326599	0.388075
+6	E	0.244949	0.077615
+7	D	0.244949	0.310460
+8	C	0.163299	0.155230
+9	B	0.081650	0.232845
+10	A*C	0.408248	0.465690
+11	A	0.081650	0.077615
+
+The geodesic path:
+t	L	R
+0.000000	-	-
+0.474154	1	3
+0.595596	2	4
+1.000000	-	-
+
+Transition points:
+Splits:     (      1,      2,      3,      4,     10,     11,      5,      6,      7,      8,      9 )
+g(0.0000) = ( 0.4899, 0.5715, 0.0000, 0.0000, 0.4082, 0.0816, 0.3266, 0.2449, 0.2449, 0.1633, 0.0816 )
+g(0.4742) = ( 0.0000, 0.1165, 0.0000, 0.0000, 0.4355, 0.0797, 0.3557, 0.1656, 0.2760, 0.1595, 0.1533 )
+g(0.5956) = ( 0.0000, 0.0000, 0.1255, 0.0000, 0.4425, 0.0792, 0.3632, 0.1453, 0.2840, 0.1585, 0.1717 )
+g(1.0000) = ( 0.0000, 0.0000, 0.5433, 0.3881, 0.4657, 0.0776, 0.3881, 0.0776, 0.3105, 0.1552, 0.2328 )
+
+
+Results for the different splits:
+Branch score 1.006206
+Geodesic distance 1.410101
+Cone distance 1.420443
+
+Results for all splits:
+Branch score 1.036708
+Geodesic distance 1.432026
+Cone distance 1.442210
+
+Complete graph enumerated: 2 path(s) found!
+
+Computation time for geodesic path: 0.0000 s

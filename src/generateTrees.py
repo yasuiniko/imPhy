@@ -1,10 +1,9 @@
 """
-Usage: generateTrees.py [<c>... options]
+Usage: generateTrees.py [<d>... options]
 
 Options:
   -h, --help            Show this help message.
-  <c>                   Values of SD:Ne to consider
-                              [default: 0.6 0.7 0.8 0.9 1 2 4 6 8 10 20]
+  <d>                   Species depths to consider
   -g, --n_gene_trees=.  Number of gene trees.            [default: 1000]
   -i, --n_ind=.         Number of individuals per species.  [default: 2]
   -n, --Ne=.            Effective population size.      [default: 10000]
@@ -21,6 +20,8 @@ import docopt
 import os
 import string
 import sys
+
+import tools
 
 # Some annoying but necessary abbreviations
 taxa_map = dp.TaxonNamespaceMapping.create_contained_taxon_mapping
@@ -63,7 +64,7 @@ def species_tree(species, sp_depth):
 
     return t
 
-def gen_trees(n_sp_trees, n_gene_trees, n_sp, n_ind, sp_depth, Ne=10000):
+def gen_trees(n_sp_trees, n_gene_trees, n_sp, n_ind, sp_depth, Ne):
     # make taxa for species. names are "A", "B", "C", ...
     species = dp.TaxonNamespace(string.ascii_uppercase[:n_sp])
 
@@ -89,37 +90,34 @@ def gen_trees(n_sp_trees, n_gene_trees, n_sp, n_ind, sp_depth, Ne=10000):
 
     return sp_trees, gene_trees
 
-def generateTrees(c_list,
+def generateTrees(d_list,
                   n_gene_trees,
                   n_sp,
                   n_ind,
                   Ne,
-                  outfolder,
-                  n_sp_trees=1):
+                  n_sp_trees,
+                  outfolder):
     # set up filesystem
     if not os.path.isdir(outfolder):
         os.makedirs(outfolder)
-    if n_sp_trees > 1:
-        gene_formula = 'c{}_g{}_i_{}s_{}_e{}_genes.nex'
-    else:
-        gene_formula = 'c{}_g{}_i{}_s{}_genes.nex'
+    gene_formula = tools.gene
     sp_formula = 'species.nex'
 
-    for c in c_list:
-        sp_depth = Ne*float(c)
+    for sp_depth in d_list:
 
-        sp, gn = gen_trees(n_sp_trees, n_gene_trees, n_sp, n_ind, sp_depth)
+        sp, gn = gen_trees(n_sp_trees, n_gene_trees, n_sp, n_ind, sp_depth, Ne)
 
-        sp_path = os.path.join(outfolder, sp_formula.format(c))
+        sp_path = os.path.join(outfolder, sp_formula)
         sp.write(path=sp_path, schema="nexus")
         
         for i, treelist in enumerate(gn):
 
-            outfile = os.path.join(outfolder, gene_formula.format(c,
-                                                                  n_gene_trees,
-                                                                  n_ind,
-                                                                  n_sp,
-                                                                  i+1))
+            outfile = os.path.join(outfolder, tools.gene.format(sp_depth,
+                                                                n_gene_trees,
+                                                                n_ind,
+                                                                Ne,
+                                                                n_sp,
+                                                                i+1))
             treelist.write(path=outfile, schema="nexus")
 
 if __name__ == "__main__":
@@ -133,7 +131,13 @@ if __name__ == "__main__":
     Ne = int(args['--Ne'])
     outfolder = args['--outfolder']
 
-    generateTrees(args['<c>'], n_gene_trees, n_sp, n_ind, Ne, outfolder, n_sp_trees)
+    generateTrees(args['<d>'],
+                  n_gene_trees,
+                  n_sp,
+                  n_ind,
+                  Ne,
+                  n_sp_trees,
+                  outfolder)
 
 
 

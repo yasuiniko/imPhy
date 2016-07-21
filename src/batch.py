@@ -1,12 +1,14 @@
 """
-Usage: batch.py all <batch_folder> <c> -g=n_gene_trees -i=n_ind -m=method... [-n=Ne] -p=prob... -s=n_sp
-       batch.py generate <batch_folder> <c> [-g=n_gene_trees -i=n_ind -m=method... -n=Ne -p=prob... -s=n_sp --plus]
-       batch.py drop <batch_folder> <n_sp> [-m=method... -p=prob --plus]
-       batch.py impute <batch_folder> [-m=method... --plus]
-       batch.py analyze <batch_folder>
+Usage: batch.py all <batch_folder> <c> [-f] -g=n_gene_trees -i=n_ind -m=method... [-n=Ne] -p=prob... -s=n_sp -t=n_sp_trees
+       batch.py generate <batch_folder> <c> [-f -g=n_gene_trees -i=n_ind -m=method... -n=Ne -p=prob... -s=n_sp --plus]
+       batch.py drop <batch_folder> <n_sp> [-f -m=method... -p=prob --plus]
+       batch.py impute <batch_folder> [-f -m=method... --plus]
+       batch.py analyze <batch_folder> [-f]
 
 Options:
   -h, --help            Show this help message.
+  -f                    Perform operations in a way that overwrites
+                        existing files.
   <batch_folder>        Path to exp_folder/batch_folder. Will contain
                         all information pertaining to the batch.
   --plus                Perform all steps following the given step. 
@@ -19,11 +21,12 @@ Options:
                                create my_batch/stats
 
   Tree Generation:
-  <c>                   Values of SD:Ne to consider.
+  <d>                   Values of Species depth to consider.
   -g, --n_gene_trees=.  Number of gene trees.            [default: 1000]
   -i, --n_ind=.         Number of individuals per species.  [default: 2]
   -n, --Ne=.            Effective population size.      [default: 10000]
   -s, --n_sp=.          Number of species.                  [default: 5]
+  -t, --n_sp_trees=.    Number of species trees.            [default: 2]
 
   Leaf Dropping:
   <n_sp>                Number of species.
@@ -44,10 +47,16 @@ from analyze import analyze
 from generateTrees import generateTrees
 from tools import timeit
 
-def generate(nexus, c, n_gene_trees, n_sp, n_ind, Ne):
+def generate(nexus, d, n_gene_trees, n_sp, n_ind, Ne, n_sp_trees):
     
     # call generate trees
-    f = lambda: generateTrees([c], n_gene_trees, n_sp, n_ind, Ne, nexus)
+    f = lambda: generateTrees([d], 
+                              n_gene_trees,
+                              n_sp,
+                              n_ind,
+                              Ne,
+                              n_sp_trees,
+                              nexus)
     timeit(f, "generating trees")
 
 def drop(batch_folder, nexus, data, n_sp, prob_missing):
@@ -56,9 +65,9 @@ def drop(batch_folder, nexus, data, n_sp, prob_missing):
     def call_R(args):
         p_drop, fname = args
         in_name = os.path.join(nexus, fname)
-        namelist = fname.split("_")
-        namelist.insert(-1, "p{}".format(p_drop))
-        out_name = os.path.join(data, "_".join(namelist)[:-4])
+        namelist = fname[:-4].split("_")
+        namelist.append("p{}".format(p_drop))
+        out_name = os.path.join(data, "_".join(namelist))
 
         subprocess.check_call(["Rscript",
                                "RandomGenerator.R",
@@ -68,7 +77,7 @@ def drop(batch_folder, nexus, data, n_sp, prob_missing):
                                "-s{}".format(n_sp)])
 
     # identify names of gene trees
-    gene_trees = lambda fname: 'gene' in fname.lower()
+    gene_trees = lambda fname: '_e' in fname.lower()
     basenames = filter(gene_trees, os.listdir(nexus))
 
     # call RandomGenerator.R
@@ -99,7 +108,7 @@ def impute(batch_folder, data, solutions, batch_base, methods):
         timeit(f, "imputing {}".format(nameroot))
 
         namelist = nameroot.split("_")
-        namelist.insert(-2, "m{}".format(method))
+        namelist.insert(-1, "m{}".format(method))
         dest = "_".join(namelist) + ".sol"
         src = nameroot + ".sol"
         cpp_sol = os.path.abspath('sol')
@@ -154,15 +163,33 @@ def make_flow(flow_dict):
 
     return lambda s: flow.pop(0) if flow and flow[0] == s else None
 
+def exists(batch_folder, subfolder, tags=[""]):
+    # batch folder and subfolder exist
+    folders_exist = os.path.exists(os.path.join(batch_folder, subfolder))
+    # subfolder is not empty
+    non_empty = os.listdir(os.path.join(batch_folder, subfolder))
+    
+    # make sure all tags are present in the filenames of the subfolder
+    for f in non_empty:
+        for tag in tags:
+            if tag in f:
+                tags.remove(tag)
+                break
+    all_tags_found = True if tags == [] else False
+
+    return True if folders_exist and non_empty and all_tags_found else False
+
 def run_batch(batch_folder,
-              c,
+              species_depth,
               n_gene_trees,
               n_ind,
               n_sp,
-              prob_missing,
+              n_sp_trees,
               Ne,
+              prob_missing,
               methods,
-              flow_dict):
+              flow_dict,
+              force=False):
     # set up folders
     directories = ["data", "nexus", "solutions", "stats"]
     dpath = lambda s: os.path.join(batch_folder, s)
@@ -176,21 +203,35 @@ def run_batch(batch_folder,
 
     current_step_is = make_flow(flow_dict)
 
+    tag = lambda s, lst: list(map(lambda x: s+str(x), lst))
+    m_tags = tag("m", methods)
+    p_tags = tag("p", prob_missing)
+
     # generate trees
     if current_step_is("generate"):
-        generate(nexus, c, n_gene_trees, n_sp, n_ind, Ne)
+        if force or not exists(batch_folder, "nexus"):
+            generate(nexus,
+                     species_depth,
+                     n_gene_trees,
+                     n_sp,
+                     n_ind,
+                     Ne,
+                     n_sp_trees)
 
     # drop leaves
     if current_step_is("drop"):
-        drop(batch_folder, nexus, data, n_sp, prob_missing)
+        if force or not exists(batch_folder, "data", p_tags):
+            drop(batch_folder, nexus, data, n_sp, prob_missing)
 
     # impute
     if current_step_is("impute"):
-        impute(batch_folder, data, solutions, batch_base, methods)
+        if force or not exists(batch_folder, "solutions", m_tags):
+            impute(batch_folder, data, solutions, batch_base, methods)
 
     # get summary stats for each file
     if current_step_is("analyze"):
-        analyze(batch_folder)
+        if force or not exists(batch_folder, "stats"):
+            analyze(batch_folder)
 
 if __name__ == "__main__":
     # get args
@@ -200,17 +241,22 @@ if __name__ == "__main__":
     n_gene_trees = int(args['--n_gene_trees'])
     n_ind = int(args['--n_ind'])
     n_sp = int(args['<n_sp>']) if args['<n_sp>'] else int(args['--n_sp'])
+    n_sp_trees = int(args['--n_sp_trees'])
     prob_missing = list(map(float, args['--prob']))
     Ne = int(args['--Ne'])
     methods = list(map(int, args['--method']))
     batch_folder = os.path.abspath(args['<batch_folder>'])
+    force = args['-f']
+    species_depth = c * Ne
 
     run_batch(batch_folder,
-              c,
+              species_depth,
               n_gene_trees,
               n_ind,
               n_sp,
-              prob_missing,
+              n_sp_trees,
               Ne,
+              prob_missing,
               methods,
-              args)
+              args,
+              force)

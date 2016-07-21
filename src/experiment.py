@@ -21,20 +21,22 @@ from tools import timeit
 from analyze import summary
 from batch import run_batch
 
-def setup(batch_folder, methods, probs, flow_dict):
+def setup(batch_folder, methods, probs, flow_dict, force):
 
     def one_run(tup):
-        c, n_gene_trees, n_ind, n_sp = tup
+        species_depth, n_gene_trees, n_ind, Ne, n_sp, n_sp_trees = tup
 
         run_batch(batch_folder=batch_folder.format(*tup),
-                  c=c,
+                  species_depth=species_depth,
                   n_gene_trees=n_gene_trees,
                   n_ind=n_ind,
                   n_sp=n_sp,
+                  n_sp_trees=n_sp_trees,
+                  Ne=Ne,
                   prob_missing=probs,
-                  Ne=10000,
                   methods=methods,
-                  flow_dict=flow_dict)
+                  flow_dict=flow_dict,
+                  force=force)
 
     return one_run
 
@@ -47,48 +49,46 @@ if __name__ == "__main__":
     if not os.path.isdir(exp_folder):
         os.makedirs(exp_folder)
 
-    # edit these lists to your heart's desire
-    # c = [0.6, 0.7, 0.8, 0.9, 1, 2, 4, 6, 8, 10, 20]
-    # c.reverse()
-    # genes = [10, 20, 30, 40, 50, 60]
-    # inds = [4, 5, 6, 10]
+    # c = [0.6, 1.0, 16.0]#0.7, 0.8, 0.9, 1, 2, 4, 6, 8, 10, 20]
+    # c = list(map(float, c))
+    # genes = [20]#, 40, 50, 60]
+    # inds = [5]#, 6, 10]
     # methods = [1, 2]
-    # probs = [0.1, 0.2, 0.5]
-    # species = [2, 3, 4, 5]
+    # probs = [0.1, 0.2, 0.05]
+    # species = [3]#, 4, 5]
+    # flow_dict = {"all":False,
+    #              "generate":False,
+    #              "drop":False,
+    #              "impute":True,
+    #              "analyze":False, 
+    #              "--plus":True}
 
-
-    c = [0.6, 0.7, 0.8, 0.9, 1, 2, 4, 6, 8, 10, 20]
+    # experiment run
+    # c = [0.6, 0.7, 0.8, 0.9, 1, 2, 4, 6, 8, 
+    c = [1,2]
     c = list(map(float, c))
-    genes = [10, 20, 30]#, 40, 50, 60]
-    inds = [2, 5, 10]#, 6, 10]
-    methods = [1, 2]
-    probs = [0.1, 0.2, 0.05]
-    species = [2, 3, 5]#, 4, 5]
+    genes = [10, 15]#, 40, 50, 60]
+    inds = [2, 3]#, 6, 10]
+    methods = [1, 2, 3, 4]
+    probs = [0.1, 0.05]
+    species = [2, 3]#, 4, 5]
+    pop_size = [10000]
+    depth = list(set(map(lambda x: int(x[0]*x[1]), product(c, pop_size))))
+    trees = [2] # number of species trees
     flow_dict = {"all":True,
                  "generate":False,
                  "drop":False,
                  "impute":False,
                  "analyze":False, 
                  "--plus":True}
-
-    # # testing
-    # c = [0.6]
-    # genes = [10]
-    # inds = [4]
-    # methods = [1]
-    # probs = [0.1]
-    # species = [2]
-
-    # names of the fields used in the format string, in the same order
-    # as they appear in the itertools.product tuple.
-    names = ["c", "genes", "inds", "sp"]
+    force = False
     
-    # feel free also to change the experiment batch path
-    batch_folder = os.path.join(exp_folder, "c{}_g{}_i{}_s{}")
+    batch_folder = os.path.join(exp_folder, "d{}_g{}_i{}_n{}_s{}")
 
-    f = lambda: list(map(setup(batch_folder, methods, probs, flow_dict),
-                         product(c, genes, inds, species)))
+    f = lambda: list(map(setup(batch_folder, methods, probs, flow_dict, force),
+                         product(depth, genes, inds, pop_size, species, trees)))
     timeit(f, "solving all problems")
+    
     summary(exp_folder)
     cc("Rscript_$_summary.R_$_{}".format(exp_folder).split("_$_"))
 
