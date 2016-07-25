@@ -8,36 +8,42 @@ Options:
 """
 
 import decimal
-import dendropy
-import docopt
-from functools import reduce
+import dendropy # pip
+import docopt # conda
+from functools import partial, reduce
 import io
 import itertools
-import numpy as np
+import numpy as np # conda
 import math
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt # conda
 import operator
 import os
-import pandas as pd
+import pandas as pd # conda
 
 from GeoMeTree.GeoMeTree import distance as calculate_bhv_distance
 import tools
 
 # DendroPy naming
 pdm = dendropy.calculate.phylogeneticdistance.PhylogeneticDistanceMatrix
-rf_dist = dendropy.calculate.treecompare.symmetric_difference
+
+def rf_dist(args):
+    assert len(args) == 2
+    return dendropy.calculate.treecompare.symmetric_difference(args[0], args[1])
 
 def bhv_dist(args):
     assert len(args) == 2
 
     t2n = lambda tree: tree.as_string(schema='newick',
-                                      suppress_leaf_taxon_labels=False,
-                                      suppress_leaf_node_labels=True,
-                                      suppress_internal_taxon_labels=True,
-                                      suppress_internal_node_labels=True,
-                                      suppress_rooting=True)
+                                  suppress_leaf_taxon_labels=False,
+                                  suppress_leaf_node_labels=True,
+                                  suppress_internal_taxon_labels=True,
+                                  suppress_internal_node_labels=True,
+                                  suppress_rooting=True)
 
-    return calculate_bhv_distance(*list(map(t2n, args)))
+    retval = calculate_bhv_distance(*list(map(t2n, args)))
+
+def to_decimal(x):
+    return decimal.Decimal(str(x))
 
 def vector2list(v):
     """
@@ -56,13 +62,7 @@ def vector2list(v):
     # fill lower triangle, convert to list, convert to elements to Decimal
     return list(map(lambda x: decimal.Decimal(str(x)), (m + m.T).flatten()))
 
-def reconstruct_trees(nexus_file):
-    """
-    Uses nexus_file to create a taxon namespace, and returns a
-    function that will create trees using the taxon namespace. Trees
-    must share the same TaxonNamespace reference in order to later
-    calculate the Robinson-Foulds distance.
-    """
+def make_taxa(nexus_file):
     taxa = []
     with open(nexus_file, 'r') as f:
         read = False
@@ -74,48 +74,46 @@ def reconstruct_trees(nexus_file):
             elif read:
                 taxa.append(line.strip())
 
-    taxa = dendropy.TaxonNamespace(taxa, label=nexus_file)
+    return dendropy.TaxonNamespace(taxa, label=nexus_file)
 
-    def make_trees(vectors):
-        """
-        Takes a vector of distances and returns trees created using
-        DendroPy's Neighbor Joining and UPGMA methods.
-        """
-        def helper(vector):
-            csv_string = ",{}\n".format(",".join(taxa.labels()))
+def reconstruct_trees(taxa, vectors):
+    """
+    Creates trees using DendroPy's Neighbor Joining and UPGMA methods.
+    """
 
-            # get dimensions of matrix
-            n = int((1 + math.sqrt(8 * len(vector) + 1)) / 2)
-            m = np.zeros((n, n))
+    def helper(vector):
+        csv_string = ",{}\n".format(",".join(taxa.labels()))
 
-            # fill upper triangle
-            m[np.triu_indices(n, k=1)] = vector
+        # get dimensions of matrix
+        n = int((1 + math.sqrt(8 * len(vector) + 1)) / 2)
+        m = np.zeros((n, n))
 
-            # fill csv_string
-            label = iter(taxa.labels())
-            for row in m:
-                csv_string += next(label) + ','
-                for i, cell in enumerate(row):
-                    csv_string += str(cell)
-                    if i < len(row) - 1:
-                        csv_string += ','
-                csv_string += "\n"
-            
-            # get distance matrix
-            dist_matrix = pdm.from_csv(io.StringIO(csv_string), 
-                                       taxon_namespace=taxa,
-                                       delimiter=',',
-                                       is_allow_new_taxa=False)
-            return dist_matrix
+        # fill upper triangle
+        m[np.triu_indices(n, k=1)] = vector
 
-        # make trees
-        nj = lambda x: x.nj_tree()
-        upgma = lambda x: x.upgma_tree()
-        distances = list(map(helper, vectors))
+        # fill csv_string
+        label = iter(taxa.labels())
+        for row in m:
+            csv_string += next(label) + ','
+            for i, cell in enumerate(row):
+                csv_string += str(cell)
+                if i < len(row) - 1:
+                    csv_string += ','
+            csv_string += "\n"
+        
+        # get distance matrix
+        dist_matrix = pdm.from_csv(io.StringIO(csv_string), 
+                                   taxon_namespace=taxa,
+                                   delimiter=',',
+                                   is_allow_new_taxa=False)
+        return dist_matrix
 
-        return map(nj, distances), map(upgma, distances)
+    # make trees
+    nj = lambda x: x.nj_tree()
+    upgma = lambda x: x.upgma_tree()
+    distances = list(map(helper, vectors))
 
-    return make_trees
+    return map(nj, distances), map(upgma, distances)
 
 def percentiles_of(x):
     """
@@ -156,32 +154,41 @@ def get_stats(solution_file, true_file):
     if sol_list.size == 0:
         return ["Solution file was empty. Please check for imputation errors."]
 
-    to_decimal = lambda x: decimal.Decimal(str(x))
-
     # get lists of distances
     imp_dists = list(itertools.chain.from_iterable(map(vector2list, sol_list)))
     og_dists = list(itertools.chain.from_iterable(map(vector2list, true_list)))
 
     # calculations
-    sq_err = list(map(lambda x: (x[0] - x[1])**2, zip(imp_dists, og_dists)))
+    err = map(lambda x: x[0] - x[1], zip(imp_dists, og_dists))
+    return calc(err, sol_file=solution_file)
+
+def calc(error, mode="stats", sol_file=""):
+    # calculations
+    sq_err = list(map(lambda x: to_decimal(x)**2, error))
     imp_sq_err = list(filter(lambda x: x != 0, sq_err))
     imp_err = list(map(lambda x: x.sqrt(), imp_sq_err))
     sse = to_decimal(sum(imp_sq_err))
-    mse = sse/len(imp_sq_err)
+    n = len(imp_sq_err) if mode == "stats" else len(sq_err)
+    mse = sse/n if n else 0
     rmse = math.sqrt(mse)
 
-    # calculate normalized error
-    def param_value(tag):
-        return list(filter(lambda tags: tag in tags,
-                           os.path.basename(solution_file).split("_")))[-1][1:]
-    species_depth = int(param_value('d'))
-    theoretical_max = 2 * species_depth 
-    nrmse = rmse / theoretical_max
-    
-    # calculate percentiles
-    p = percentiles_of(imp_err) 
+    if mode == "stats":
+        # calculate normalized error
+        def param_value(tag):
+            return list(filter(lambda tags: tag in tags,
+                               os.path.basename(sol_file).split("_")))[-1][1:]
+        species_depth = int(param_value('d'))
+        theoretical_max = 2 * species_depth 
+        nrmse = rmse / theoretical_max
 
-    return p(0), p(25), p(50), p(75), p(100), rmse, nrmse
+        # calculate percentiles
+        p = percentiles_of(imp_err)
+
+        return p(0), p(25), p(50), p(75), p(100), rmse, nrmse
+
+    elif mode == 'rf': 
+ 
+        return rmse / (2 * (n - 3))
 
 def tree_stats(solution_file, true_file, tree_gen):    
     # read file
@@ -194,15 +201,14 @@ def tree_stats(solution_file, true_file, tree_gen):
     nj_trees = list(zip(imp_nj, og_nj))
     upgma_trees = list(zip(imp_upgma, og_upgma))
 
-    unary_rf_dist = lambda pair: rf_dist(pair[0], pair[1])
-
     # get distances
-    bhv_nj = list(map(bhv_dist, nj_trees))
-    rf_nj = list(map(unary_rf_dist, nj_trees))
-    bhv_upgma = list(map(bhv_dist, upgma_trees))
-    rf_upgma = list(map(unary_rf_dist, upgma_trees))
+    # bhv_nj_t = tools.timeit(bhv_nj, "bhv nj")
+    rf_nj_t = calc(map(rf_dist, nj_trees), mode='rf')
+    # bhv_upgma_t = tools.timeit(bhv_nj, "bhv upgma")
+    rf_upgma_t = calc(map(rf_dist, upgma_trees), mode='rf')
 
-    return bhv_nj + rf_nj + bhv_upgma + rf_upgma
+    # return bhv_nj_t + rf_nj_t + bhv_upgma_t + rf_upgma_t
+    return rf_nj_t, rf_upgma_t
 
 def write_to(batch_folder, solution_file, desc=""):
     """
@@ -219,6 +225,8 @@ def write_to(batch_folder, solution_file, desc=""):
         """
         Writes x to file.
         """
+        if type(x) == tuple or type(x) == list:
+            x = list(itertools.chain(x))
         with open(os.path.join(stats, basename + '.txt'), 'w') as f:
             f.write(" ".join(map(str, x)))
     return write
@@ -256,20 +264,24 @@ def analyze(batch_folder):
 
     # match solution files with a tree generation function
     sol2nexus = {sol: match(sol, nexus_files, 'e') for sol in sol_files}
-    sol2tree_gen = {s: reconstruct_trees(sol2nexus[s]) for s in sol_files}
-    match_sol_treegen = lambda sol: sol2tree_gen[sol]
+    nex2trees = {n: partial(reconstruct_trees, make_taxa(n)) for n in nexus_files}
+    match_sol_treegen = lambda sol: nex2trees[sol2nexus[sol]]
 
     # make function to write stats
-    write_stats = lambda tup: write_to(batch_folder, tup[0])(get_stats(*tup))
-    write_trees = lambda tup: write_to(batch_folder,
-                                       tup[0],
-                                       '_tree')(tree_stats(*tup))
+    def write_stats(tup): 
+        write_to(batch_folder, tup[0])(get_stats(*tup))
+    def write_trees(tup):
+        write_to(batch_folder, tup[0], '_tree')(tree_stats(*tup))
 
     # write stats
-    list(map(write_stats, zip(sol_files, map(match_sol_true, sol_files))))
-    list(map(write_trees, zip(sol_files, 
-                              map(match_sol_true, sol_files),
-                              map(match_sol_treegen, sol_files))))
+    stats_files = zip(sol_files, map(match_sol_true, sol_files))
+    tree_files = zip(sol_files,
+                     map(match_sol_true, sol_files), 
+                     map(match_sol_treegen, sol_files))
+    list(map(write_stats, stats_files))
+    list(map(write_trees, tree_files))
+    # Parallel(n_jobs=num_cores)(delayed(write_stats)(f) for f in stats_files)
+    # Parallel(n_jobs=num_cores)(delayed(write_trees)(f) for f in tree_files)
 
 def summary(exp_folder):
     """
@@ -320,8 +332,8 @@ def summary(exp_folder):
         return list(map(values_from_tag, param_tags))
 
     def get_row(param_values, rowsize, modifier=""):
-        def quarter(lst):
-            n = len(lst)//4
+        def chunk(lst, k):
+            n = len(lst)//k
             for i in range(0, len(lst), n):
                 yield lst[i:i+n]
         def data(vect):
@@ -331,11 +343,13 @@ def summary(exp_folder):
             experiment.
             """
 
+            k = 2
             # get values of current parameters
             get_vals = lambda x: param_values[x[0]][x[1]]
             params = list(map(get_vals, enumerate(vect)))
 
             # get paths
+            print(params)
             batch_folder = tools.batch.format(*params)
             nameroot = tools.fileroot.format(*params)
             filename = nameroot + modifier + ".txt"
@@ -346,16 +360,19 @@ def summary(exp_folder):
 
             # get data
             try:
-                row = params + list(map(float, np.loadtxt(stats_path)))
-                assert len(row) == rowsize
-            except ValueError:
-                row = [float('nan')] * rowsize
-            except AssertionError:
-                data = list(map(float, np.loadtxt(stats_path)))
-                pad_length = (rowsize - len(row))//4
-                padded = map(lambda x: x + [float('nan')] * pad_length,
-                             quarter(data))
-                row = params + list(itertools.chain.from_iterable(padded))
+                row = params + list(np.loadtxt(stats_path))
+
+            except ValueError as e:
+                with open(stats_path, 'r') as f:
+                    cln = lambda x: x.translate({ord(c): None for c in '[],'})
+                    data = list(map(cln, f.readline().split()))
+                if list(filter(lambda x: x.isdigit(), data)):
+                    pad_length = (rowsize - len(data) - len(params))//k
+                    padded = map(lambda x: x + [float('nan')] * pad_length,
+                                 chunk(data, k))
+                    row = params + list(itertools.chain.from_iterable(padded))
+                else:
+                    row = [float('nan')] * rowsize
 
             return row
         return data
@@ -384,19 +401,19 @@ def summary(exp_folder):
                                 filter(lambda x: 'g' in x, 
                                        split_tags))))
 
-    base_cols = ["Species Depth", "Species Tree Index", "Number of Gene Trees", 
+    tree_cols = ["Species Depth", "Species Tree Index", "Number of Gene Trees", 
             "Number of Individuals per Species", "Method",
             "Effective Population Size", "Leaf Dropping Probability",
-            "Number of Species"]
-    tree_types = ["bhv_nj", "rf_nj", "bhv_upgma", "rf_upgma"]
-    lst_sum = lambda a, b: a + b
-    get_names = lambda x: [x]*n_gene_trees
-    tree_cols = base_cols + reduce(lst_sum, map(get_names, tree_types), [])
+            "Number of Species", "rf_nj", "rf_upgma"]
+    # tree_types = ["bhv_nj", "rf_nj", "bhv_upgma", "rf_upgma"]
+    # lst_sum = lambda a, b: a + b
+    # get_names = lambda x: [x]*n_gene_trees
+    # tree_cols = base_cols + reduce(lst_sum, map(get_names, tree_types), [])
 
     # get values of parameters used in this experiment
     param_values = values_from_tags(supertags + subtags)
-    data_from_coord = get_row(param_values, len(cols))
-    tree_from_coord = get_row(param_values, len(tree_cols), "_tree")
+    coord_data = get_row(param_values, len(cols))
+    coord_tree = get_row(param_values, len(tree_cols), "_tree")
 
     # get sizes to create the numpy array
     dimensions = list(map(len, param_values))
@@ -406,9 +423,13 @@ def summary(exp_folder):
     data = np.empty((size, len(cols)), dtype=float)
     tree = np.empty((size, len(tree_cols)), dtype=float)
     coordinates = itertools.product(*list(map(range, dimensions)))
+
+    # num_cores = multiprocessing.cpu_count()
+    # data = Parallel(n_jobs=num_cores)(delayed(coord_data)(c) for c in cords)
+    # tree = Parallel
     for ind, coordinate in enumerate(coordinates):
-        data[ind] = data_from_coord(coordinate)
-        tree[ind] = tree_from_coord(coordinate)
+        data[ind] = coord_data(coordinate)
+        tree[ind] = coord_tree(coordinate)
 
     # write data
     outpath = os.path.join(exp_folder, "summary.csv")
