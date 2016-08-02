@@ -1,9 +1,12 @@
 """
-Usage: experiment.py <exp_folder>
+Usage: experiment.py <exp_folder> [options]
 
 Options:
   <exp_folder>          Path to destination folder for the sets of data.
 
+  -f                    Overwrite files that may already exist within
+                        the experiment folder.          [default: False]
+  -t                    Testing mode.                   [default: False]
 """
 
 import docopt
@@ -11,7 +14,7 @@ from itertools import product
 import os
 import subprocess
 
-from analyze import summary
+from analyze import compile_stats
 from batch import run_batch
 import tools
 
@@ -36,58 +39,74 @@ def setup(batch_folder, methods, probs, flow_dict, force):
 
 if __name__ == "__main__":
     args = docopt.docopt(__doc__)
+
+    # get args
     exp_folder = args['<exp_folder>']
+    test, experiment = args['-t'], not args['-t']
+    force = args['-f']
+
+    # set up filesystem
     if exp_folder[0] != '/':
         exp_folder = os.path.abspath(os.path.join("..", exp_folder))
-
     if not os.path.isdir(exp_folder):
         os.makedirs(exp_folder)
 
-    # # test run
-    # c = [0.6]#, 0.7, 0.8, 0.9, 1, 2, 4, 6, 8, 10, 20]
-    # c = list(map(float, c))
-    # genes = [10, 20, 30]#, 40, 50, 60]
-    # inds = [2, 5, 10]#, 6, 10]
-    # methods = [3]#, 4]
-    # probs = [0.1]#, 0.05, 0.2]
-    # species = [2]#, 3, 5]
-    # pop_size = [10000]
-    # depth = list(set(map(lambda x: int(x[0]*x[1]), product(c, pop_size))))
-    # trees = [1] # number of species trees
-    # flow_dict = {"all":True,
-    #              "generate":False,
-    #              "drop":False,
-    #              "impute":False,
-    #              "analyze":False, 
-    #              "--plus":True}
-    # force = True
+    # test run
+    if test:
+        c = [0.6]#, 0.7, 0.8, 0.9, 1, 2, 4, 6, 8, 10, 20]
+        c = list(map(float, c))
+        genes = [10, 20]#, 40, 50, 60]
+        inds = [10]#, 6, 10]
+        methods = [3]#, 4]
+        probs = [0.1]#, 0.05, 0.2]
+        species = [2]#, 3, 5]
+        pop_size = [10000]
+        depth = list(set(map(lambda x: int(x[0]*x[1]), product(c, pop_size))))
+        trees = [1] # number of species trees
+        flow_dict = {"all":True,
+                     "generate":False,
+                     "drop":False,
+                     "impute":False,
+                     "analyze":False, 
+                     "--plus":True}
 
-    # experiment run
-    c = [0.6, 0.7, 0.8, 0.9, 1, 2, 4, 6, 8, 10, 20]
-    c = list(map(float, c))
-    genes = [10, 20, 30]#, 40, 50, 60]
-    inds = [2, 5, 10]#, 6, 10]
-    methods = [3, 4]
-    probs = [0.1, 0.05, 0.2]
-    species = [2, 3, 5]
-    pop_size = [10000]
-    depth = list(set(map(lambda x: int(x[0]*x[1]), product(c, pop_size))))
-    trees = [1] # number of species trees
-    flow_dict = {"all":False,
-                 "generate":False,
-                 "drop":False,
-                 "impute":False,
-                 "analyze":True, 
-                 "--plus":True}
-    force = True
+    # experimental set up
+    if experiment: 
+        c = [0.6, 0.7, 0.8, 0.9, 1, 2, 4, 6, 8, 10, 20]
+        c = list(map(float, c))
+        genes = [10, 20, 30]
+        inds = [2, 5, 10]
+        methods = [3, 4]
+        probs = [0.1, 0.05, 0.2]
+        species = [2, 3, 5]
+        pop_size = [10000]
+        depth = list(set(map(lambda x: int(x[0]*x[1]), product(c, pop_size))))
+        trees = [1] # number of species trees
+        
+        # Options to set 
+        flow_dict = {"all":True,        # overrides other options
+                     "generate":False,  # generate trees
+                     "drop":False,      # drop leaves
+                     "impute":False,    # impute missing leaves
+                     "analyze":False,   # analyze batches
+                     "--plus":True}     # perform operations following
+                                        # the first selection operation
     
-    batch_folder = os.path.join(exp_folder, "d{}_g{}_i{}_n{}_s{}")
-    one_batch_run = setup(batch_folder, methods, probs, flow_dict, force)
+    # batch folder naming scheme
+    batch_folder = os.path.join(exp_folder, batch_general)
+    one_batch_run = setup(batch_folder, methods, probs, flow_dict, overwrite)
     batch_iterator = product(depth, genes, inds, pop_size, species, trees)
-    f = lambda: tools.parmap(one_batch_run, batch_iterator)
+    
+    # choose run method depending on testing or not
+    run_parallel= lambda: tools.parmap(one_batch_run, batch_iterator)
+    run_serial = lambda: list(map(one_batch_run, batch_iterator))
+    f = run_parallel if experiment else run serial
+
+    # run experiment
     tools.timeit(f, "solving all problems")
     
-    summary(exp_folder)
+    # run statistics
+    compile_stats(exp_folder)
     make_graphs = "Rscript_$_summary.R_$_{}".format(exp_folder)
     subprocess.check_call(make_graphs.split("_$_"))
 
