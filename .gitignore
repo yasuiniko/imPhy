@@ -1,0 +1,16 @@
+data_archive/
+
+src/.RData
+src/.Rhistory
+
+src/cpp/data/
+src/cpp/*.o
+src/cpp/*.o.dSYM/
+src/cpp/model/
+src/cpp/sol/
+
+src/__pycache__/
+src/read.py
+
+src/trees.sublime-project
+src/trees.sublime-workspace
