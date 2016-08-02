@@ -1,5 +1,7 @@
-import time
+from functools import reduce
+import itertools
 import multiprocessing
+import time
 
 def timeit(f, s):
     bigs = s[0].upper() + s[1:]
@@ -10,7 +12,13 @@ def timeit(f, s):
     print("Done {} in {}s.\n".format(smalls, time.time() - t))
     return x
 
-def parmap(f, X, nprocs=multiprocessing.cpu_count()):
+def flatten(*lsts):
+    return itertools.chain(*lsts)
+
+def iterflatten(iterable):
+    return itertools.chain.from_iterable(iterable)
+
+def parmap(f, X, nprocs=multiprocessing.cpu_count()-1):
     """
     Taken from http://stackoverflow.com/revisions/16071616/9
     """
@@ -38,6 +46,7 @@ def parmap(f, X, nprocs=multiprocessing.cpu_count()):
 
     return [x for i, x in sorted(res)]
 
-gene =     'd{}_g{}_i{}_n{}_s{}_e{}.nex'
-batch =    "d{0}_g{2}_i{3}_n{5}_s{7}"
-fileroot = "d{0}_g{2}_i{3}_n{5}_s{7}_e{1}_m{4}_p{6}"
+gene =           'd{}_g{}_i{}_n{}_s{}_e{}.nex'
+batch_analyze =  "d{0}_g{2}_i{3}_n{5}_s{7}"
+batch_general =  "d{}_g{}_i{}_n{}_s{}"
+fileroot =       "d{0}_g{2}_i{3}_n{5}_s{7}_e{1}_m{4}_p{6}"
