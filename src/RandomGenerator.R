@@ -19,6 +19,8 @@ Options:
                                     outfile_true.txt).   [default: test]
 
  -p <prob>, --prob <prob>           Probability of a leaf going missing.
+                                    If greater than one, interpreted as
+                                    the number of leaves to drop.
                                                           [default: 0.2]
 
  -s <species>, --species <species>  Number of species.      [default: 5]
@@ -73,8 +75,11 @@ opts <- docopt(doc)
 # Set output files -- fname=the output in the format needed, fnameTRUE=the true distances
 fname <- paste0(opts$outfile, '.txt')
 fnameTRUE <- paste0(opts$outfile, '_true.txt')
-prob_missing <- assert_valid_prob(as.numeric(opts$prob))
-n_tips_to_drop <- function(max_tips) rbinom(1, max_tips, prob_missing)
+if (as.numeric(opts$prob) > 1){
+    n_tips_to_drop <- function(max_tips) as.numeric(opts$prob)
+} else {
+    n_tips_to_drop <- function(max_tips) rbinom(1, max_tips, as.numeric(opts$prob))
+}
 
 if (!is.null(opts$infile)) {
     # get trees
