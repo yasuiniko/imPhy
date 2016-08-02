@@ -9,7 +9,7 @@ Options:
 import docopt
 from itertools import product
 import os
-from subprocess import check_call as cc
+import subprocess
 
 from analyze import summary
 from batch import run_batch
@@ -88,5 +88,6 @@ if __name__ == "__main__":
     tools.timeit(f, "solving all problems")
     
     summary(exp_folder)
-    cc("Rscript_$_summary.R_$_{}".format(exp_folder).split("_$_"))
+    make_graphs = "Rscript_$_summary.R_$_{}".format(exp_folder)
+    subprocess.check_call(make_graphs.split("_$_"))
 

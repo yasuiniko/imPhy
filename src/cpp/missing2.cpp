@@ -5,16 +5,52 @@
 
 using namespace std;
 
-// UPDATED at 11.45pm (CST) 07/14/2016
+// UPDATED at 2.25pm (CST) 07/19/2016
 
 class TreeDistance{
 private:
-    int leaf1, leaf2;
-    float distance;
+    vector<float> distances;
+    int nLeaves;
+    int translateLeavesToIndex(int l1, int l2){
+        int firstIndex=0;
+        for(int i=0;i<l1;i++){
+            firstIndex+=nLeaves-1-i;
+        }
+        return firstIndex+(l2-l1-1);
+    }
 public:
-    TreeDistance(int l1, int l2, float d){leaf1=l1; leaf2=l2; distance=d;}
-    bool hasLeaf(int l){return l==leaf1||l==leaf2;}
-    float getDistance(){return distance;}
+    TreeDistance(){
+        nLeaves=-1;
+    }
+    TreeDistance(int n){
+        nLeaves=n;
+    }
+    TreeDistance(int n, vector<float> v){
+        nLeaves=n; distances=v;
+    }
+    vector<float> getDistances(){
+        return distances;
+    }
+    float getDistanceAt(int index){
+        if(index<nLeaves*(nLeaves-1)/2){
+            return distances.at(index);
+        }
+        else{
+            return -1;
+        }
+    }
+    float getDistanceAt(int leaf1, int leaf2){
+        if(leaf1==leaf2){
+            return -1;
+        }
+        else if(leaf1>leaf2){
+            int temp=leaf1;
+            leaf1=leaf2;
+            leaf2=temp;
+        }
+        return getDistanceAt(translateLeavesToIndex(leaf1, leaf2));
+    }
+    
 };
 
 int translatePosToSpecies(int nSp, int *nInds, int i){
@@ -52,7 +88,7 @@ int main(int argc, const char * argv[]) {
     }
     
     
-    vector<float**>TreeDistances;
+    vector<TreeDistance>TreeDistances;
     
     float m=-1;
     float *eps=new float[nSpecies];
@@ -63,10 +99,7 @@ int main(int argc, const char * argv[]) {
     bool done=false;
     do{
         float temp;
-        float **TreeD=new float*[nLeaves];
-        for(int i=0;i<nLeaves;i++){
-            TreeD[i]=new float[nLeaves];
-        }
+        vector<float> TreeD;
         for(int i=0;i<nLeaves;i++){
             for(int j=i+1;j<nLeaves;j++){
                 inp >> temp;
@@ -78,7 +111,7 @@ int main(int argc, const char * argv[]) {
                         eps[translatePosToSpecies(nSpecies, nIndividuals, i)]=temp;
                     }
                 }
-                TreeD[i][j]=temp;
+                TreeD.push_back(temp);
             }
         }
         if(inp.eof()){
@@ -86,7 +119,8 @@ int main(int argc, const char * argv[]) {
         }
         else{
             nGenes++;
-            TreeDistances.push_back(TreeD);
+            TreeDistance x(nLeaves,TreeD);
+            TreeDistances.push_back(x);
         }
     }while(!done);
     
@@ -104,7 +138,7 @@ int main(int argc, const char * argv[]) {
             for(int i=0;i<nLeaves;i++){
                 x[t][i]=new GRBVar[nLeaves];
                 for(int j=i+1;j<nLeaves;j++){
-                    if (TreeDistances.at(t)[i][j]==-1){
+                    if (TreeDistances.at(t).getDistanceAt(i,j)==-1){
                         char name[10];
                         sprintf(name, "x(%d,%d,%d)", t, i, j);
                         x[t][i][j]=model.addVar(0,1,0,'C',name);
@@ -112,7 +146,7 @@ int main(int argc, const char * argv[]) {
                     else{
                         char name[10];
                         sprintf(name, "x(%d,%d,%d)", t, i, j);
-                        x[t][i][j]=model.addVar(TreeDistances.at(t)[i][j]/m,TreeDistances.at(t)[i][j]/m,0,'C',name);
+                        x[t][i][j]=model.addVar(TreeDistances.at(t).getDistanceAt(i,j)/m,TreeDistances.at(t).getDistanceAt(i,j)/m,0,'C',name);
                     }
                 }
             }
@@ -173,7 +207,7 @@ int main(int argc, const char * argv[]) {
             for(int i=0;i<nLeaves;i++){
                 for(int j=i+1;j<nLeaves;j++){
                     in2 >> trueDistance;
-                    if(TreeDistances.at(t)[i][j]==-1){
+                    if(TreeDistances.at(t).getDistanceAt(i,j)==-1){
                         cout << t << " " << i << " " << j << "\t: " << m*x[t][i][j].get(GRB_DoubleAttr_X) << " vs. " << trueDistance << endl;
                     }
                 }

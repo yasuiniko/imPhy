@@ -37,6 +37,7 @@ Options:
 """
 
 import docopt
+from functools import partial
 import itertools
 import os
 import shutil
@@ -101,8 +102,7 @@ def impute(batch_folder, data, solutions, batch_base, methods):
     def call_imp(args):
         basename, method = args
         nameroot = basename[:-4]
-        methodstr = "" if method == 1 else 2
-        program = "./missing{}.o".format(methodstr)
+        program = "./missing{}.o".format(method)
         
         f = lambda: subprocess.check_call([program, nameroot])
         timeit(f, "imputing {}".format(nameroot))
@@ -156,8 +156,14 @@ def impute(batch_folder, data, solutions, batch_base, methods):
 
 def make_flow(flow_dict):
     flow = ["generate", "drop", "impute", "analyze"]
+
+    # if "all" not selected
     if not flow_dict["all"]:
+
+        # get rid of everything before the first true value
         while not (flow_dict[flow[0]] if flow else True): flow.pop(0)
+
+        # if not --plus, isolate the selected command
         if not flow_dict['--plus']:
             flow = [flow[0]]
 
@@ -231,7 +237,8 @@ def run_batch(batch_folder,
     # get summary stats for each file
     if current_step_is("analyze"):
         if force or not exists(batch_folder, "stats"):
-            analyze(batch_folder)
+            f = partial(analyze, batch_folder=batch_folder)
+            timeit(f, "analyzing {}".format(os.path.basename(batch_folder)))
 
 if __name__ == "__main__":
     # get args
