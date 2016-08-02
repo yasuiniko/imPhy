@@ -43,7 +43,7 @@ plotdata <- data.r[,-1][-11]
 
 for (i in 1:length(plotdata)) {
     if (i < length(plotdata)){
-        p <- bwplot(nrmse~names(plotdata)[i],
+        p <- boxplot(as.formula(paste0("nrmse~",names(plotdata)[i])),
                     ylab='NRMSE',
                     main=paste("NRMSE by", names(plotdata[i])),
                     xlab=names(plotdata[i]),
