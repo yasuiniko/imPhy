@@ -52,9 +52,10 @@ def species_tree(species, sp_depth):
     max_depth = max(map(distance_from_root, t.leaf_node_iter()))
 
     # scale distances
-    for e in t.preorder_edge_iter():
-        # e.length *= Decimal(str(sp_depth))/max_depth
-        e.length *= sp_depth/max_depth
+    if max_depth > 0:
+        for e in t.preorder_edge_iter():
+            # e.length *= Decimal(str(sp_depth))/max_depth
+            e.length *= sp_depth/max_depth
 
     # # convert back to float
     # for e in t.preorder_edge_iter():
@@ -138,6 +139,3 @@ if __name__ == "__main__":
                   Ne,
                   n_sp_trees,
                   outfolder)
-
-
-
