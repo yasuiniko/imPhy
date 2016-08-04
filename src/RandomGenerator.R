@@ -75,7 +75,7 @@ opts <- docopt(doc)
 # Set output files -- fname=the output in the format needed, fnameTRUE=the true distances
 fname <- paste0(opts$outfile, '.txt')
 fnameTRUE <- paste0(opts$outfile, '_true.txt')
-if (as.numeric(opts$prob) > 1){
+if (as.numeric(opts$prob) >= 1){
     n_tips_to_drop <- function(max_tips) as.numeric(opts$prob)
 } else {
     n_tips_to_drop <- function(max_tips) rbinom(1, max_tips, as.numeric(opts$prob))
