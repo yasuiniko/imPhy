@@ -60,7 +60,7 @@ def generate(nexus, d, n_gene_trees, n_sp, n_ind, Ne, n_sp_trees):
                               nexus)
     timeit(f, "generating trees")
 
-def drop(batch_folder, nexus, data, n_sp, prob_missing):
+def drop(batch_folder, nexus, data, n_sp, prob_missing, force):
     
     # function to call RandomGenerator.R
     def call_R(args):
@@ -69,6 +69,12 @@ def drop(batch_folder, nexus, data, n_sp, prob_missing):
         namelist = fname[:-4].split("_")
         namelist.append("p{}".format(p_drop))
         out_name = os.path.join(data, "_".join(namelist))
+
+        if force:
+            if os.path.exists(out_name+".txt"):
+                os.remove(out_name+".txt")
+            if os.path.exists(out_name+"_true.txt"):
+                os.remove(out_name+"_true.txt")
 
         subprocess.check_call(["Rscript",
                                "RandomGenerator.R",
@@ -227,7 +233,7 @@ def run_batch(batch_folder,
     # drop leaves
     if current_step_is("drop"):
         if force or not exists(batch_folder, "data", p_tags):
-            drop(batch_folder, nexus, data, n_sp, prob_missing)
+            drop(batch_folder, nexus, data, n_sp, prob_missing, force)
 
     # impute
     if current_step_is("impute"):

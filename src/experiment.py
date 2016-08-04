@@ -53,13 +53,13 @@ if __name__ == "__main__":
 
     # test run
     if test:
-        c = [0.6]#, 0.7, 0.8, 0.9, 1, 2, 4, 6, 8, 10, 20]
+        c = [1]#, 0.7, 0.8, 0.9, 1, 2, 4, 6, 8, 10, 20]
         c = list(map(float, c))
-        genes = [10]#, 40, 50, 60]
-        inds = [5]#, 6, 10]
+        genes = [10, 20]#, 40, 50, 60]
+        inds = [5,10]#, 6, 10]
         methods = [1,2]#, 4]
-        probs = [0.1]#, 0.05, 0.2]
-        species = [2]#, 3, 5]
+        probs = [1]#, 0.05, 0.2]
+        species = [3]#, 3, 5]
         pop_size = [10000]
         depth = list(set(map(lambda x: int(x[0]*x[1]), product(c, pop_size))))
         trees = [1] # number of species trees
@@ -73,22 +73,28 @@ if __name__ == "__main__":
     # experimental set up
     if experiment: 
         c = [0.6, 0.7, 0.8, 0.9, 1, 2, 4, 6, 8, 10, 20]
-        c = list(map(float, c))
         genes = [10, 20, 30]
-        inds = [5, 10, 15]
-        methods = [1, 2]
-        probs = [4]
-        species = [3]
+        methods = [3, 4]
+        probs = [0.05, 0.1, 0.2]
+        species = [2, 3, 5]
+        inds = [2, 5, 10]
+        trees = [1]
+        # c = [1, 4, 8, 12, 16, 20]
+        # inds = [5, 10, 15]
+        # methods = [1, 2]
+        # probs = [4]
+        # species = [3]
+        # trees = [3] # number of species trees
         pop_size = [10000]
+        c = list(map(float, c))
         depth = list(set(map(lambda x: int(x[0]*x[1]), product(c, pop_size))))
-        trees = [3] # number of species trees
         
         # Options to set 
-        flow_dict = {"all":True,        # overrides other options
+        flow_dict = {"all":False,        # overrides other options
                      "generate":False,  # generate trees
                      "drop":False,      # drop leaves
                      "impute":False,    # impute missing leaves
-                     "analyze":False,   # analyze batches
+                     "analyze":True,   # analyze batches
                      "--plus":True}     # perform operations following
                                         # the first selection operation
     
