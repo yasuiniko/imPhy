@@ -15,9 +15,12 @@ import io
 import itertools
 import numpy as np # conda
 import math
+import matplotlib.pyplot as plt
 import operator
 import os
 import pandas as pd # conda
+import random
+import seaborn as sns # conda
 import subprocess
 import tempfile
 
@@ -93,6 +96,16 @@ def bhv_dist(args, batch_folder):
 def to_decimal(x):
     return decimal.Decimal(str(x))
 
+def vector2upper_tri_matrix(v):
+    # get dimensions of matrix
+    n = int((1 + math.sqrt(8 * len(v) + 1)) / 2)
+    m = np.zeros((n, n))
+
+    # fill upper triangle
+    m[np.triu_indices(n, k=1)] = v
+
+    return m
+
 def vector2list(v):
     """
     Converts the vectorized form of a distance matrix (in the form of 
@@ -100,12 +113,7 @@ def vector2list(v):
     list) filled with Decimals. 
     """
 
-    # get dimensions of matrix
-    n = int((1 + math.sqrt(8 * len(v) + 1)) / 2)
-    m = np.zeros((n, n))
-
-    # fill upper triangle
-    m[np.triu_indices(n, k=1)] = v
+    m = vector2upper_tri_matrix(v)
 
     # fill lower triangle, convert to list, convert to elements to Decimal
     return list(map(lambda x: decimal.Decimal(str(x)), (m + m.T).flatten()))
@@ -124,20 +132,19 @@ def make_taxa(nexus_file):
 
     return dendropy.TaxonNamespace(taxa, label=nexus_file)
 
-def reconstruct_trees(taxa, vectors):
+def reconstruct_trees(batch_folder, taxa, vectors):
     """
     Creates trees using DendroPy's Neighbor Joining and UPGMA methods.
     """
 
-    def helper(vector):
+    def get_pdm(vector):
+        """
+        Creates a PhylogeneticDistanceMatrix from the vectorized
+        distance matrix.
+        """
         csv_string = ",{}\n".format(",".join(taxa.labels()))
-
-        # get dimensions of matrix
-        n = int((1 + math.sqrt(8 * len(vector) + 1)) / 2)
-        m = np.zeros((n, n))
-
-        # fill upper triangle
-        m[np.triu_indices(n, k=1)] = vector
+        
+        m = vector2upper_tri_matrix(vector)
 
         # fill csv_string
         label = iter(taxa.labels())
@@ -157,9 +164,25 @@ def reconstruct_trees(taxa, vectors):
         return dist_matrix
 
     # make trees
+    distances = list(map(get_pdm, vectors))
     nj = lambda x: x.nj_tree()
     upgma = lambda x: x.upgma_tree()
-    distances = list(map(helper, vectors))
+
+    # make heatmaps
+    exp_folder, batch_name = os.path.split(batch_folder)
+    heatpath = os.path.join(exp_folder, 'heatmaps')
+
+    i = 0
+    for vect in vectors:
+        if random.random() < 0.001:
+            upper = vector2upper_tri_matrix(vect)
+            dist = upper + upper.T
+            plotname = "{}_{}__{}".format(batch_name, 
+                                          i,
+                                          "_".join(taxa.labels()))
+            plotpath = os.path.join(heatpath, plotname)
+            np.savetxt(plotpath, dist)
+            i += 1
 
     return map(nj, distances), map(upgma, distances)
 
@@ -242,6 +265,61 @@ def get_stats(solution_file, true_file):
 
     return calc(err, sol_file=solution_file), err
 
+def prop_separated_trees(treelist, get_species=lambda taxon: taxon.label[0]):
+    """
+    Calculates the proportion of trees for which each tree has a subtree
+    containing all the members of a species and none of the members of 
+    another species.
+    """
+
+    def is_separated_tree(tree):
+        """
+        Determines if each species in the tree can be contained in a 
+        subtree which contains only that species.
+        """
+
+        def has_species_subtree(sp_taxa):
+            """
+            Check if the subtree whose leaves contain all taxa in 
+            sp_taxa has leaves with taxa outside of sp_taxa.
+            """
+
+            # initialize labels and node
+            labels = [n.label for n in sp_taxa]
+            node = tree.find_node_with_taxon_label(labels[0])
+            nlabs = [n.label for n in node.leaf_nodes()]
+
+            # loop until all labels are in node's subtree
+            while not all(lab in nlabs for lab in labels):
+                node = node.parent_node
+                nlabs = [n.taxon.label for n in node.leaf_nodes()]
+
+            # check if there are any outspecies leaves in the subtree
+            return len(nlabs) == len(labels)
+
+        # find the number of individuals per species
+        n_sp = len(set(map(get_species, tree.taxon_namespace)))
+        k = int(len(tree.taxon_namespace)/n_sp)
+
+        # split taxa into groups by species
+        taxa = list(sorted(tree.taxon_namespace, key=get_species))
+        species_taxa = []
+        while taxa:
+            curr_species = get_species(taxa[0])
+            in_species = lambda t: get_species(t) == curr_species
+            species = list(filter(in_species, taxa))
+            species_taxa.append(species)
+            list(map(taxa.remove, species))
+
+        # species_taxa = [taxa[i:i+k] for i in range(0, len(taxa), k)]
+
+        return all(map(has_species_subtree, species_taxa))
+
+    num_separated = sum(map(is_separated_tree, treelist))
+    total = len(treelist)
+
+    return num_separated / total
+
 def tree_stats(solution_file, true_file, tree_gen, batch_folder):    
     # read file
     sol_list = np.loadtxt(solution_file)
@@ -250,8 +328,10 @@ def tree_stats(solution_file, true_file, tree_gen, batch_folder):
     # get trees
     imp_nj, imp_upgma = tree_gen(sol_list)
     og_nj, og_upgma = tree_gen(true_list)
+    imp_nj, imp_upgma = list(imp_nj), list(imp_upgma)
     nj_trees = list(zip(imp_nj, og_nj))
     upgma_trees = list(zip(imp_upgma, og_upgma))
+    imp_trees = [imp_nj, imp_upgma]
 
     # turn bhv_dist into a monad
     bhv = lambda args: bhv_dist(args=args, batch_folder=batch_folder)
@@ -261,20 +341,20 @@ def tree_stats(solution_file, true_file, tree_gen, batch_folder):
     bhv_upgma, codim_upgma = list(zip(*list(map(bhv, upgma_trees))))
     rf_nj = list(map(rf_dist, nj_trees))
     rf_upgma = list(map(rf_dist, upgma_trees))
+
+    # proportion of good clades
+    clade_sep = list(map(prop_separated_trees, imp_trees))
     
     # rearrange 
     tree_dists = [bhv_nj, bhv_upgma, rf_nj, rf_upgma]
     tree_dists_plus = [*tree_dists, codim_nj, codim_upgma]
 
     # make sure all fields are the same length
-    assert reduce(lambda x, y: x and y, 
-                  map(lambda x: len(x) == len(tree_dists[0]), 
-                      tree_dists_plus),
-                  True)
+    assert all(map(lambda x: len(x) == len(nj_trees), tree_dists_plus))
 
     # make summaries and return 
     tree_calc = partial(calc, mode="tree")
-    return list(map(tree_calc, tree_dists)), tree_dists_plus
+    return list(map(tree_calc, tree_dists)) + clade_sep, tree_dists_plus
 
 def write_to(batch_folder, solution_file, desc=""):
     """
@@ -298,7 +378,7 @@ def write_to(batch_folder, solution_file, desc=""):
             Flatten if it's a list of lists
             """
             if x and type(x[0]) == list or type(x[0]) == tuple:
-                x = flatten(*x)
+                x = list(flatten(*x))
             return x
 
         # separate and flatten data
@@ -345,7 +425,8 @@ def analyze(batch_folder):
 
     # match solution files with a tree generation function
     sol2nexus = {sol: match(sol, nexus_files, 'e') for sol in sol_files}
-    nex2trees = {n: partial(reconstruct_trees, make_taxa(n)) for n in nexus_files}
+    recons_trees = partial(reconstruct_trees, batch_folder)
+    nex2trees = {n: partial(recons_trees, make_taxa(n)) for n in nexus_files}
     match_sol_treegen = lambda sol: nex2trees[sol2nexus[sol]]
 
     # make function to write stats
@@ -509,7 +590,9 @@ def compile_stats(exp_folder):
                    "AIE lower quartile", "AIE median", "AIE upper quartile",
                    "AIE max", "Imputation RMSE", "Imputation NRMSE"]
     base_tree_types = ["bhv_nj", "rf_nj", "bhv_upgma", "rf_upgma"]
-    ex_tree_types = base_tree_types + ["bhv_nj_codim", "bhv_upgma_codim"]
+    tree_types = base_tree_types + ["Proportion Separated NJ Trees",
+                                    "Proportion Separated UPGMA Trees"]
+    ex_tree_types = base_tree_types + ["nj_codim", "upgma_codim"]
 
     expanded_tree_types = list(iterflatten(map(expand_cols, ex_tree_types)))
     zr = ["zr_bhv_nj","zr_rf_nj",
@@ -517,7 +600,7 @@ def compile_stats(exp_folder):
     tree_all_types = expanded_tree_types + zr
 
     # define columns
-    extras = [stats_types, base_tree_types, tree_all_types]
+    extras = [stats_types, tree_types, tree_all_types]
     cols = [base_cols + extra for extra in extras]
     stats_cols, tree_cols, tree_all_cols = cols 
 
@@ -548,6 +631,22 @@ def compile_stats(exp_folder):
     # write tree all
     outpath = os.path.join(exp_folder, "tree_all.csv")
     pd.DataFrame(tree_all, columns=tree_all_cols).to_csv(outpath)
+
+    # write heatmaps
+    sns.set_palette('colorblind')
+    heatpath = os.path.join(exp_folder, 'heatmaps')
+    fig = plt.figure()
+    for plotname in os.listdir(heatpath):
+        if plotname[-4:] == '.png' or plotname[0] == '.': continue
+        plotpath = os.path.join(heatpath, plotname)
+        dist = np.loadtxt(plotpath)
+
+        labels = plotpath.split('__')[1].split('_')
+        heatmap = sns.heatmap(pd.DataFrame(dist, columns=labels),
+                              yticklabels=labels)
+        fig.savefig(plotpath)
+        fig.clear()
+    plt.close()
 
 if __name__ == '__main__':
     args = docopt.docopt(__doc__)

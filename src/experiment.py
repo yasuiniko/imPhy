@@ -12,6 +12,7 @@ Options:
 import docopt
 from itertools import product
 import os
+import shutil
 import subprocess
 
 from analyze import compile_stats
@@ -50,6 +51,10 @@ if __name__ == "__main__":
         exp_folder = os.path.abspath(os.path.join("..", exp_folder))
     if not os.path.isdir(exp_folder):
         os.makedirs(exp_folder)
+    heatpath = os.path.join(exp_folder, 'heatmaps')
+    if os.path.isdir(heatpath):
+        shutil.rmtree(heatpath)
+    os.makedirs(heatpath)
 
     # test run
     if test:
