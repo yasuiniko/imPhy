@@ -77,26 +77,19 @@ if __name__ == "__main__":
 
     # experimental set up
     if experiment: 
-        c = [0.6, 0.7, 0.8, 0.9, 1, 2, 4, 6, 8, 10, 20]
+        c = [1, 4, 8, 12, 16, 20]
         genes = [10, 20, 30]
-        methods = [3, 4]
-        probs = [0.05, 0.1, 0.2]
-        species = [2, 3, 5]
-        inds = [2, 5, 10]
-        trees = [1]
-        # c = [1, 4, 8, 12, 16, 20]
-        # genes = [10, 20, 30]
-        # inds = [8]
-        # methods = [1, 2]
-        # probs = [4, 8, 16]
-        # species = [2, 4, 6, 8]
-        # trees = [3] # number of species trees
+        inds = [8]
+        methods = [1, 2]
+        probs = [4, 8, 16]
+        species = [2, 4, 6, 8]
+        trees = [3] # number of species trees
         pop_size = [10000]
         c = list(map(float, c))
         depth = list(set(map(lambda x: int(x[0]*x[1]), product(c, pop_size))))
         
         # Options to set 
-        flow_dict = {"all":False,        # overrides other options
+        flow_dict = {"all":True,        # overrides other options
                      "generate":False,  # generate trees
                      "drop":False,      # drop leaves
                      "impute":False,    # impute missing leaves
@@ -116,9 +109,4 @@ if __name__ == "__main__":
 
     # run experiment
     tools.timeit(f, "solving all problems")
-    
-    # # run statistics
-    # compile_stats(exp_folder)
-    # make_graphs = "Rscript_$_summary.R_$_{}".format(exp_folder)
-    # subprocess.check_call(make_graphs.split("_$_"))
 
