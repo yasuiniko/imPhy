@@ -145,7 +145,8 @@ def impute(batch_folder, data, solutions, batch_base, methods):
 
     # delete files in cpp_data
     c_data_path = lambda f: os.path.join(cpp_data, f)
-    in_data = lambda f: f[:-4] in map(lambda x: x[:-4], os.listdir(data))
+    data_files = list(map(lambda x: x[:-4], os.listdir(data)))
+    in_data = lambda f: f[:-4] in data_files
     list(map(os.remove,
              map(c_data_path, 
                  filter(in_data,
@@ -153,7 +154,8 @@ def impute(batch_folder, data, solutions, batch_base, methods):
 
     # move files to solutions
     c_sol_path = lambda f: os.path.join(cpp_sol, f)
-    in_sols = lambda f: set(f.split("_")[:4]) <= set(batch_base.split("_"))
+    batch_ids = batch_base.split("_")
+    in_sols = lambda f: set(f.split("_")[:len(batch_ids)]) <= set(batch_ids)
     list(map(move(solutions, "move"),
              map(c_sol_path,
                  filter(in_sols,
