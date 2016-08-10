@@ -104,6 +104,9 @@ def generateTrees(d_list,
     gene_formula = tools.gene
     sp_formula = 'species.nex'
 
+    prop_separated = []
+
+    # d_list usually contains one species depth
     for sp_depth in d_list:
 
         sp, gn = gen_trees(n_sp_trees, n_gene_trees, n_sp, n_ind, sp_depth, Ne)
@@ -120,6 +123,11 @@ def generateTrees(d_list,
                                                                 n_sp,
                                                                 i+1))
             treelist.write(path=outfile, schema="nexus")
+
+            prop_separated.append(tools.prop_separated_trees(treelist))
+
+    with open(os.path.join(outfolder, "separated.txt"), 'w') as f:
+        f.write(str(sum(prop_separated)/len(prop_separated)))
 
 if __name__ == "__main__":
 
@@ -139,3 +147,6 @@ if __name__ == "__main__":
                   Ne,
                   n_sp_trees,
                   outfolder)
+
+
+

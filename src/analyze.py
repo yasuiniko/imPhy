@@ -15,7 +15,7 @@ import io
 import itertools
 import numpy as np # conda
 import math
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt # conda
 import operator
 import os
 import pandas as pd # conda
@@ -24,7 +24,7 @@ import seaborn as sns # conda
 import subprocess
 import tempfile
 
-from tools import flatten, iterflatten, batch_analyze, fileroot
+from tools import *
 
 # DendroPy naming
 pdm = dendropy.calculate.phylogeneticdistance.PhylogeneticDistanceMatrix
@@ -36,51 +36,37 @@ def rf_dist(args):
 
     return dist/(2*(n-3))
 
-def bhv_dist(args, batch_folder):
+def bhv_dist(args, batch_folder, rooted):
     """
     Wrapper for GTP code
     """
-
-    def codimension(comb_block):
-        """
-        find longest subblock in 'combinatorial types' block
-        """
-        # remove unnecessary characters
-        clean = str.maketrans({c:None for c in ";/"})
-        cleaned_block = comb_block.translate(clean).split("}{")
-        
-        # get longest block
-        get_length = lambda x: len(x.split(","))
-        return max(map(get_length, cleaned_block))
-
-
-        assert len(args) == 2
-
-    # convert tree to newick for GTP
-    t2n = lambda tree: tree.as_string(schema='newick',
-                                      suppress_leaf_taxon_labels=False,
-                                      suppress_leaf_node_labels=True,
-                                      suppress_internal_taxon_labels=True,
-                                      suppress_internal_node_labels=True,
-                                      suppress_rooting=True)
 
     # make temporary outfiles for GTP
     (fd, infile) = tempfile.mkstemp()
     outfile = infile + 'out'
 
-    # call GTP
     try:
+        # open temporary file to hold trees
         tfile = os.fdopen(fd, "w")
-        list(map(tfile.write, map(t2n, args)))
+        list(map(tfile.write, map(newick, args)))
         tfile.close()
         
-        gtp = "java^^-jar^^gtp.jar^^-v^^-n^^-o^^{}^^{}".format(outfile, infile)
-        output = str(subprocess.check_output(gtp.split("^^")), "utf-8")
+        # call GTP
+        root_arg = "" if rooted else "-u^^"
+        gtp = "java^^-jar^^gtp.jar^^-v^^-n^^{}-o^^{}^^{}".format(root_arg,
+                                                                 outfile, 
+                                                                 infile)
+        try:
+            output = str(subprocess.check_output(gtp.split("^^")), "utf-8")
+        except subprocess.CalledProcessError as e:
+            print(output)
+            raise e
+
     finally:
         os.remove(infile)
 
     # calculate distances
-    codim, distance = 0, 0.0
+    codim, distance = -1, -1.0
     with io.StringIO(output) as f:
         for line in f:
             if "Combinatorial type" in line:
@@ -93,8 +79,40 @@ def bhv_dist(args, batch_folder):
 
     return [distance, codim]
 
+def newick(tree):
+    return tree.as_string(schema='newick',
+                          suppress_leaf_taxon_labels=False,
+                          suppress_leaf_node_labels=True,
+                          suppress_internal_taxon_labels=True,
+                          suppress_internal_node_labels=True,
+                          suppress_rooting=True)
+
+
+def codimension(comb_block):
+    """
+    find longest subblock in 'combinatorial types' block
+    """
+    # remove unnecessary characters
+    clean = str.maketrans({c:None for c in ";/"})
+    cleaned_block = comb_block.translate(clean).split("}{")
+    
+    # get longest block
+    get_length = lambda x: len(x.split(","))
+    return max(map(get_length, cleaned_block))
+
+
+    assert len(args) == 2
+
 def to_decimal(x):
     return decimal.Decimal(str(x))
+
+def check_flatten(x):
+    """
+    Flatten if it's a list of lists
+    """
+    if x and type(x[0]) == list or type(x[0]) == tuple:
+        x = list(flatten(*x))
+    return x
 
 def vector2upper_tri_matrix(v):
     # get dimensions of matrix
@@ -132,7 +150,15 @@ def make_taxa(nexus_file):
 
     return dendropy.TaxonNamespace(taxa, label=nexus_file)
 
-def reconstruct_trees(batch_folder, taxa, vectors):
+def unroot(tree):
+    """
+    Converts rooted tree into unrooted tree.
+    """
+    tree.is_rooted = False
+    tree.update_bipartitions()
+    return tree
+
+def reconstruct_trees(taxa, vectors, true_file):
     """
     Creates trees using DendroPy's Neighbor Joining and UPGMA methods.
     """
@@ -169,22 +195,25 @@ def reconstruct_trees(batch_folder, taxa, vectors):
     upgma = lambda x: x.upgma_tree()
 
     # make heatmaps
-    exp_folder, batch_name = os.path.split(batch_folder)
+    data_folder, true_name = os.path.split(true_file)
+    batch_folder, _ = os.path.split(data_folder)
+    dropped_name = true_name[:-9] + ".txt"
+    exp_folder = os.path.split(batch_folder)[0]
     heatpath = os.path.join(exp_folder, 'heatmaps')
 
-    i = 0
-    for vect in vectors:
-        if random.random() < 0.001:
-            upper = vector2upper_tri_matrix(vect)
-            dist = upper + upper.T
-            plotname = "{}_{}__{}".format(batch_name, 
-                                          i,
-                                          "_".join(taxa.labels()))
-            plotpath = os.path.join(heatpath, plotname)
-            np.savetxt(plotpath, dist)
-            i += 1
+    if (true_name[1:7] == "200000" and 
+        batch_folder[-1] == "2"):
+        for i, vect in enumerate(vectors):
+            if random.random() < 0.01:
+                upper = vector2upper_tri_matrix(vect)
+                dist = upper + upper.T
+                plotname = "{}_{}__{}".format(dropped_name[:-4], 
+                                              i,
+                                              "_".join(taxa.labels()))
+                plotpath = os.path.join(heatpath, plotname)
+                np.savetxt(plotpath, dist)
 
-    return map(nj, distances), map(upgma, distances)
+    return list(map(unroot, map(nj, distances))), list(map(upgma, distances))
 
 def percentiles_of(x):
     """
@@ -265,85 +294,38 @@ def get_stats(solution_file, true_file):
 
     return calc(err, sol_file=solution_file), err
 
-def prop_separated_trees(treelist, get_species=lambda taxon: taxon.label[0]):
+def tree_stats(solution_file, true_file, tree_gen, batch_folder):  
     """
-    Calculates the proportion of trees for which each tree has a subtree
-    containing all the members of a species and none of the members of 
-    another species.
+    Compiles the BHV and Robinson-Foulds distances, the codimension of
+    the BHV distance, and the proportion of well-separated trees.
     """
 
-    def is_separated_tree(tree):
-        """
-        Determines if each species in the tree can be contained in a 
-        subtree which contains only that species.
-        """
-
-        def has_species_subtree(sp_taxa):
-            """
-            Check if the subtree whose leaves contain all taxa in 
-            sp_taxa has leaves with taxa outside of sp_taxa.
-            """
-
-            # initialize labels and node
-            labels = [n.label for n in sp_taxa]
-            node = tree.find_node_with_taxon_label(labels[0])
-            nlabs = [n.label for n in node.leaf_nodes()]
-
-            # loop until all labels are in node's subtree
-            while not all(lab in nlabs for lab in labels):
-                node = node.parent_node
-                nlabs = [n.taxon.label for n in node.leaf_nodes()]
-
-            # check if there are any outspecies leaves in the subtree
-            return len(nlabs) == len(labels)
-
-        # find the number of individuals per species
-        n_sp = len(set(map(get_species, tree.taxon_namespace)))
-        k = int(len(tree.taxon_namespace)/n_sp)
-
-        # split taxa into groups by species
-        taxa = list(sorted(tree.taxon_namespace, key=get_species))
-        species_taxa = []
-        while taxa:
-            curr_species = get_species(taxa[0])
-            in_species = lambda t: get_species(t) == curr_species
-            species = list(filter(in_species, taxa))
-            species_taxa.append(species)
-            list(map(taxa.remove, species))
-
-        # species_taxa = [taxa[i:i+k] for i in range(0, len(taxa), k)]
-
-        return all(map(has_species_subtree, species_taxa))
-
-    num_separated = sum(map(is_separated_tree, treelist))
-    total = len(treelist)
-
-    return num_separated / total
-
-def tree_stats(solution_file, true_file, tree_gen, batch_folder):    
-    # read file
+    # read files
     sol_list = np.loadtxt(solution_file)
     true_list = np.loadtxt(true_file)
+    sep_file = os.path.join(batch_folder, "nexus/separated.txt")
+    og_sep = [float(np.loadtxt(sep_file))]
 
     # get trees
-    imp_nj, imp_upgma = tree_gen(sol_list)
-    og_nj, og_upgma = tree_gen(true_list)
-    imp_nj, imp_upgma = list(imp_nj), list(imp_upgma)
+    imp_nj, imp_upgma = tree_gen(sol_list, true_file)
+    og_nj, og_upgma = tree_gen(true_list, true_file)
+
     nj_trees = list(zip(imp_nj, og_nj))
     upgma_trees = list(zip(imp_upgma, og_upgma))
-    imp_trees = [imp_nj, imp_upgma]
+    sep_trees = [imp_nj, imp_upgma, og_nj, og_upgma]
 
     # turn bhv_dist into a monad
-    bhv = lambda args: bhv_dist(args=args, batch_folder=batch_folder)
+    bhv_r = partial(bhv_dist, batch_folder=batch_folder, rooted=True)
+    bhv_u = partial(bhv_dist, batch_folder=batch_folder, rooted=False)
 
     # distance calculations
-    bhv_nj, codim_nj = list(zip(*list(map(bhv, nj_trees))))
-    bhv_upgma, codim_upgma = list(zip(*list(map(bhv, upgma_trees))))
+    bhv_nj, codim_nj = list(zip(*list(map(bhv_u, nj_trees))))
+    bhv_upgma, codim_upgma = list(zip(*list(map(bhv_r, upgma_trees))))
     rf_nj = list(map(rf_dist, nj_trees))
     rf_upgma = list(map(rf_dist, upgma_trees))
 
     # proportion of good clades
-    clade_sep = list(map(prop_separated_trees, imp_trees))
+    well_sep = list(map(prop_separated_trees, sep_trees)) + og_sep
     
     # rearrange 
     tree_dists = [bhv_nj, bhv_upgma, rf_nj, rf_upgma]
@@ -354,7 +336,7 @@ def tree_stats(solution_file, true_file, tree_gen, batch_folder):
 
     # make summaries and return 
     tree_calc = partial(calc, mode="tree")
-    return list(map(tree_calc, tree_dists)) + clade_sep, tree_dists_plus
+    return list(map(tree_calc, tree_dists)) + well_sep, tree_dists_plus
 
 def write_to(batch_folder, solution_file, desc=""):
     """
@@ -373,14 +355,6 @@ def write_to(batch_folder, solution_file, desc=""):
         """
         assert len(x) == 2
 
-        def check_flatten(x):
-            """
-            Flatten if it's a list of lists
-            """
-            if x and type(x[0]) == list or type(x[0]) == tuple:
-                x = list(flatten(*x))
-            return x
-
         # separate and flatten data
         summary, all_data = list(map(check_flatten, x))
         
@@ -392,13 +366,29 @@ def write_to(batch_folder, solution_file, desc=""):
 
     return write
 
-def match(infile, file_list, tag):
+def match(infile, file_list, tags):
     """
-    Finds the first file in file_list containing the same tag value as 
-    infile.
+    Finds files in file_list containing the same tag value as infile.
     """
-    get_tag = lambda f: list(filter(lambda x: tag in x, f[:-4].split("_")))[-1]
-    return list(filter(lambda f: get_tag(infile) in f, file_list))[0]
+    if type(tags) is list:
+        tag_values = list(filter(lambda x: any(tag in x for tag in tags), 
+                                 infile[:-4].split("_")))
+    else:
+        tag_values = list(filter(lambda x: tags in x, infile[:-4].split("_")))
+    
+    match_files = list(filter(lambda f: all(tag in f for tag in tag_values), 
+                              file_list))
+
+    try:
+        assert len(match_files) == 1
+    except AssertionError as e:
+        print(infile)
+        print(file_list)
+        print(tags)
+        print(match_files)
+        raise e
+
+    return match_files[0]
 
 def analyze(batch_folder):
     """
@@ -421,12 +411,11 @@ def analyze(batch_folder):
     nexus_files = tagged_files("nexus", "_e")
 
     # match solution files to files from which they were created
-    match_sol_true = lambda sol: match(sol, true_files, 'p')
+    match_sol_true = lambda sol: match(sol, true_files, ['e', 'p'])
 
     # match solution files with a tree generation function
     sol2nexus = {sol: match(sol, nexus_files, 'e') for sol in sol_files}
-    recons_trees = partial(reconstruct_trees, batch_folder)
-    nex2trees = {n: partial(recons_trees, make_taxa(n)) for n in nexus_files}
+    nex2trees = {n: partial(reconstruct_trees, make_taxa(n)) for n in nexus_files}
     match_sol_treegen = lambda sol: nex2trees[sol2nexus[sol]]
 
     # make function to write stats
@@ -443,121 +432,121 @@ def analyze(batch_folder):
     list(map(write_stats, stats_files))
     list(map(write_trees, tree_files))
 
+def values_from_tags(tags):
+    """
+    Returns a list of lists of the values of each parameter in tags.
+    """
+
+    # check if string is a valid parameter
+    valid_param = lambda s: s[0].isalpha() and s[1].isdigit()
+    # split by underscore
+    def split(s):
+        if list(filter(lambda x: x.isdigit(), s[-4:])):
+            return list(filter(lambda x: x, s.split("_")))
+        else:
+            return list(filter(lambda x: x, s[:-4].split("_")))
+
+    param_list = set(filter(valid_param, iterflatten(map(split, tags))))  
+
+    def values_from_tag(param_tag):
+        """
+        Get all values of a parameter in param_list that is
+        uniquely identified by its param_tag. 
+        """
+        # get the value of a parameter
+        param_value = lambda param: param.split(param_tag)[-1]
+        # check if the parameter has the correct tag
+        correct_tag = lambda param: param_tag in param
+        
+        return list(map(param_value, 
+                        filter(correct_tag, 
+                               param_list)))
+    
+    # get the first element of a string
+    first_char = lambda s: s[0]
+
+    # sorted list of parameter tags
+    param_tags = sorted(list(set(map(first_char, param_list))))
+
+    # list of lists of values of parameters
+    return list(map(values_from_tag, param_tags))
+
+def get_row(vect, param_values, exp_folder, rowsize, modifier=""):
+    """
+    Get the row of values to store in the CSV file according to
+    vect, a vector describing the values of parameters in the
+    experiment.
+    """
+
+    # get values of current parameters
+    get_vals = lambda x: param_values[x[0]][x[1]]
+    params = list(map(get_vals, enumerate(vect)))
+
+    # get paths
+    batch_folder = batch_analyze.format(*params)
+    nameroot = fileroot.format(*params)
+    filename = nameroot + modifier + ".txt"
+    stats_path = os.path.join(exp_folder,
+                              batch_folder,
+                              "stats",
+                              filename)
+
+    # get data
+    try:
+        # stats_path points to non-tree stats file
+        data = list(np.loadtxt(stats_path))
+        row = params + data 
+
+        # data is for tree_all and must be padded depending on the
+        # number of trees 
+        if rowsize != len(row):
+            # split data into 6 pieces 
+            k = int(len(data)/6)
+            split_k = [data[i:i+k] for i in range(0, len(data), k)]
+
+            # pad each piece
+            pad_len = int((rowsize - len(params) - len(data) - 4)/6)
+            padded = [q + [float('nan')] * pad_len for q in split_k]
+
+            # find zero ratio
+            zero = [len([x for x in q if x == 0]) for q in split_k[:4]]
+            zr = [z/len(total) for z, total in zip(zero, split_k[:4])]
+            
+            # create row
+            row = params + list(flatten(*padded)) + zr
+
+            assert len(row) == rowsize
+
+    except ValueError as e:
+        print("Filename: {}".format(filename))
+        print("k: {}".format(k))
+        raise e
+        
+        row = [float('nan')] * rowsize
+
+        # # code for avoiding lists, but should avoid lists when writing
+        # with open(stats_path, 'r') as f:
+        #     cln = lambda x: x.translate({ord(c): None for c in '[],'})
+        #     data = list(map(cln, f.readline().split()))
+        # if list(filter(lambda x: x.isdigit(), data)):
+        #     row = params + data
+        # else:
+        #     row = [float('nan')] * rowsize
+
+    except AssertionError as e:
+        print("Filename: {}".format(filename))
+        print("rowsize: {}, len(row): {}".format(rowsize, len(row)))
+        print("pad_len: {}, k: {}".format(pad_len, k))
+        print("data: {}".format(list(map(len, split_k))))
+        raise e
+
+    return row
+
 def compile_stats(exp_folder):
     """
     Creates a csv file with summary statistics from each batch_folder in 
     exp_folder.
     """
-
-    # functions to parse the exp_folder
-    def values_from_tags(tags):
-        """
-        Returns a list of lists of the values of each parameter in tags.
-        """
-
-        # check if string is a valid parameter
-        valid_param = lambda s: s[0].isalpha() and s[1].isdigit()
-        # split by underscore
-        def split(s):
-            if list(filter(lambda x: x.isdigit(), s[-4:])):
-                return list(filter(lambda x: x, s.split("_")))
-            else:
-                return list(filter(lambda x: x, s[:-4].split("_")))
-
-        param_list = set(filter(valid_param, iterflatten(map(split, tags))))  
-
-        def values_from_tag(param_tag):
-            """
-            Get all values of a parameter in param_list that is
-            uniquely identified by its param_tag. 
-            """
-            # get the value of a parameter
-            param_value = lambda param: param.split(param_tag)[-1]
-            # check if the parameter has the correct tag
-            correct_tag = lambda param: param_tag in param
-            
-            return list(map(param_value, 
-                            filter(correct_tag, 
-                                   param_list)))
-        
-        # get the first element of a string
-        first_char = lambda s: s[0]
-
-        # sorted list of parameter tags
-        param_tags = sorted(list(set(map(first_char, param_list))))
-
-        # list of lists of values of parameters
-        return list(map(values_from_tag, param_tags))
-
-    def get_row(vect, param_values, rowsize, modifier=""):
-        """
-        Get the row of values to store in the CSV file according to
-        vect, a vector describing the values of parameters in the
-        experiment.
-        """
-
-        # get values of current parameters
-        get_vals = lambda x: param_values[x[0]][x[1]]
-        params = list(map(get_vals, enumerate(vect)))
-
-        # get paths
-        batch_folder = batch_analyze.format(*params)
-        nameroot = fileroot.format(*params)
-        filename = nameroot + modifier + ".txt"
-        stats_path = os.path.join(exp_folder,
-                                  batch_folder,
-                                  "stats",
-                                  filename)
-
-        # get data
-        try:
-            # stats_path points to non-tree stats file
-            data = list(np.loadtxt(stats_path))
-            row = params + data 
-
-            # data is for tree_all and must be padded depending on the
-            # number of trees 
-            if rowsize != len(row):
-                # split data into 6 pieces 
-                k = int(len(data)/6)
-                split_k = [data[i:i+k] for i in range(0, len(data), k)]
-
-                # pad each piece
-                pad_len = int((rowsize - len(params) - len(data) - 4)/6)
-                padded = [q + [float('nan')] * pad_len for q in split_k]
-
-                # find zero ratio
-                zero = [len([x for x in q if x == 0]) for q in split_k[:4]]
-                zr = [z/len(total) for z, total in zip(zero, split_k[:4])]
-                
-                # create row
-                row = params + list(flatten(*padded)) + zr
-
-                assert len(row) == rowsize
-
-        except ValueError as e:
-            print("Filename: {}".format(filename))
-            print("k: {}".format(k))
-            raise e
-            row = [float('nan')] * rowsize
-
-            # # code for avoiding lists, but should avoid lists when writing
-            # with open(stats_path, 'r') as f:
-            #     cln = lambda x: x.translate({ord(c): None for c in '[],'})
-            #     data = list(map(cln, f.readline().split()))
-            # if list(filter(lambda x: x.isdigit(), data)):
-            #     row = params + data
-            # else:
-            #     row = [float('nan')] * rowsize
-
-        except AssertionError as e:
-            print("Filename: {}".format(filename))
-            print("rowsize: {}, len(row): {}".format(rowsize, len(row)))
-            print("pad_len: {}, k: {}".format(pad_len, k))
-            print("data: {}".format(list(map(len, split_k))))
-            raise e
-
-        return row
 
     # make sure exp_folder is absolute path
     exp_folder = os.path.abspath(exp_folder)
@@ -590,8 +579,11 @@ def compile_stats(exp_folder):
                    "AIE lower quartile", "AIE median", "AIE upper quartile",
                    "AIE max", "Imputation RMSE", "Imputation NRMSE"]
     base_tree_types = ["bhv_nj", "rf_nj", "bhv_upgma", "rf_upgma"]
-    tree_types = base_tree_types + ["Proportion Separated NJ Trees",
-                                    "Proportion Separated UPGMA Trees"]
+    tree_types = base_tree_types + ["Proportion Separated Imputed NJ Trees",
+                                    "Proportion Separated Imputed UPGMA Trees",
+                                    "Proportion Separated Reconstructed NJ Trees",
+                                    "Proportion Separated Reconstructed UPGMA Trees",
+                                    "Proportion Separated Original Trees"]
     ex_tree_types = base_tree_types + ["nj_codim", "upgma_codim"]
 
     expanded_tree_types = list(iterflatten(map(expand_cols, ex_tree_types)))
@@ -615,10 +607,19 @@ def compile_stats(exp_folder):
     # fill data arrays
     coordinates = itertools.product(*list(map(range, dimensions)))
     for ind, coordinate in enumerate(coordinates):
-        data[ind] = get_row(coordinate, param_values, len(cols[0]), "")
-        tree[ind] = get_row(coordinate, param_values, len(cols[1]), "_tree")
+        data[ind] = get_row(coordinate,
+                            param_values,
+                            exp_folder,
+                            len(cols[0]), 
+                            "")
+        tree[ind] = get_row(coordinate, 
+                            param_values, 
+                            exp_folder,
+                            len(cols[1]),
+                            "_tree")
         tree_all[ind] = get_row(coordinate, 
                                 param_values,
+                                exp_folder,
                                 len(cols[2]),
                                 "_tree_all")
 
@@ -641,12 +642,50 @@ def compile_stats(exp_folder):
         plotpath = os.path.join(heatpath, plotname)
         dist = np.loadtxt(plotpath)
 
-        labels = plotpath.split('__')[1].split('_')
-        heatmap = sns.heatmap(pd.DataFrame(dist, columns=labels),
-                              yticklabels=labels)
-        fig.savefig(plotpath)
+        name, labelstring = plotpath.split('__')
+        labels = labelstring.split("_")
+
+        outname = os.path.join(heatpath, name)
+        ind = name.split("_")[-1]
+        _, plot_name = os.path.split(name[:-(len(ind)+1)])
+        b_len = len(supertags[0].split('_'))
+        batch_base = "_".join(os.path.split(plot_name)[1].split('_')[:b_len])
+        data_name = os.path.join(exp_folder,
+                                 batch_base, 
+                                 "data",
+                                 plot_name + ".txt")
+        with open(data_name, 'r') as f:
+            lines = (line for line in f if len(line.split()) > 2)
+            all_dropped = np.loadtxt(lines)
+            dropped = vector2upper_tri_matrix(all_dropped[int(ind)])
+            dropped += dropped.T
+
+        dmax = max(np.amax(dropped), np.amax(dist))
+        set_min = np.vectorize(lambda x: -dmax if x == -1 else x)
+        dropped = set_min(dropped)
+
+        dhm = pd.DataFrame(dropped, columns=labels, index=labels)
+        dhm = dhm.reindex_axis(sorted(dhm.columns), axis='columns')
+        dhm = dhm.reindex_axis(sorted(dhm.index), axis='index')
+
+        ihm = pd.DataFrame(dist, columns=labels, index=labels)
+        ihm = ihm.reindex_axis(sorted(ihm.columns), axis='columns')
+        ihm = ihm.reindex_axis(sorted(ihm.index), axis='index')
+
+        sns.heatmap(dhm, yticklabels=labels)
+        fig.savefig(outname + "_dropped")
         fig.clear()
+
+        sns.heatmap(ihm, yticklabels=labels, vmin=-dmax)
+        fig.savefig(outname + "_imputed")
+        fig.clear()
+
+        os.remove(plotpath)
+        
     plt.close()
+
+    make_graphs = "Rscript_$_summary.R_$_{}".format(exp_folder)
+    subprocess.check_call(make_graphs.split("_$_"))
 
 if __name__ == '__main__':
     args = docopt.docopt(__doc__)

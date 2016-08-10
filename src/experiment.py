@@ -85,10 +85,11 @@ if __name__ == "__main__":
         inds = [2, 5, 10]
         trees = [1]
         # c = [1, 4, 8, 12, 16, 20]
-        # inds = [5, 10, 15]
+        # genes = [10, 20, 30]
+        # inds = [8]
         # methods = [1, 2]
-        # probs = [4]
-        # species = [3]
+        # probs = [4, 8, 16]
+        # species = [2, 4, 6, 8]
         # trees = [3] # number of species trees
         pop_size = [10000]
         c = list(map(float, c))
@@ -116,8 +117,8 @@ if __name__ == "__main__":
     # run experiment
     tools.timeit(f, "solving all problems")
     
-    # run statistics
-    compile_stats(exp_folder)
-    make_graphs = "Rscript_$_summary.R_$_{}".format(exp_folder)
-    subprocess.check_call(make_graphs.split("_$_"))
+    # # run statistics
+    # compile_stats(exp_folder)
+    # make_graphs = "Rscript_$_summary.R_$_{}".format(exp_folder)
+    # subprocess.check_call(make_graphs.split("_$_"))
 
