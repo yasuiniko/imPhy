@@ -29,29 +29,28 @@ for (i in 1:length(plotdata)) {
 
 invisible(dev.off())
 
-# data <- read.csv(paste0(opts$infolder,"/tree_summary.csv"), header=TRUE)
-# data.r <- reshape(data, 
-#                   direction="long",
-#                   varying=c("rf_nj", "rf_upgma"),
-#                   v.names="nrmse",
-#                   timevar="tree_type",
-#                   sep="")
+data <- read.csv(paste0(opts$infolder,"/tree_summary.csv"), header=TRUE)
+data.r <- reshape(data, 
+                  direction="long",
+                  varying=c("rf_nj", "rf_upgma", "bhv_nj", "bhv_upgma"),
+                  v.names="nrmse",
+                  sep="")
 
-# pdf(paste0(opts$infolder, "/tree_plots.pdf"))
+pdf(paste0(opts$infolder, "/tree_plots.pdf"))
 
-# plotdata <- data.r[,-1][-11]
+plotdata <- data.r[,-1][-11]
 
-# for (i in 1:length(plotdata)) {
-#     if (i < length(plotdata)){
-#         boxplot(as.formula(paste0("nrmse~",names(plotdata)[i])),
-#                 ylab='NRMSE',
-#                 main=paste("NRMSE by", names(plotdata[i])),
-#                 xlab=names(plotdata[i]),
-#                 data=plotdata)
-#     } else {
-#         boxplot(data.r$nrmse, ylab='NRMSE', main="NRMSE boxplot")
-#     }
-# }
+for (i in 1:(length(plotdata) - 1)) {
+    if (i < length(plotdata) - 1){
+        boxplot(as.formula(paste0("nrmse~",names(plotdata)[i])),
+                ylab='NRMSE',
+                main=paste("NRMSE by", names(plotdata[i])),
+                xlab=names(plotdata[i]),
+                data=plotdata)
+    } else {
+        boxplot(data.r$nrmse, ylab='NRMSE', main="NRMSE boxplot")
+    }
+}
 
-# invisible(dev.off())
+invisible(dev.off())
 
