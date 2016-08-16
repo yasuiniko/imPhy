@@ -1,7 +1,11 @@
+import decimal
 from functools import reduce
 import itertools
 import multiprocessing
 import time
+
+def to_decimal(x):
+    return decimal.Decimal(str(x))
 
 def timeit(f, s):
     bigs = s[0].upper() + s[1:]
@@ -97,9 +101,9 @@ def prop_separated_trees(treelist, get_species=lambda taxon: taxon.label[0]):
             species_taxa.append(species)
             list(map(taxa.remove, species))
 
-        # species_taxa = [taxa[i:i+k] for i in range(0, len(taxa), k)]
+        is_separated = all(map(has_species_subtree, species_taxa))
 
-        return all(map(has_species_subtree, species_taxa))
+        return is_separated
 
     num_separated = sum(map(is_separated_tree, treelist))
     total = len(treelist)

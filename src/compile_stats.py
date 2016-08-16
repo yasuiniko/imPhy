@@ -1,5 +1,5 @@
 """
-Usage: analyze.py <exp_folder>
+Usage: compile_stats.py <exp_folder>
 
 Options:
   -h, --help            Show this help message.
@@ -7,7 +7,6 @@ Options:
                         subfolders.
 """
 
-import decimal
 import dendropy # pip
 import docopt # conda
 from functools import partial, reduce
@@ -29,16 +28,20 @@ from tools import *
 # DendroPy naming
 pdm = dendropy.calculate.phylogeneticdistance.PhylogeneticDistanceMatrix
 
-def rf_dist(args):
-    assert len(args) == 2
-    dist = dendropy.calculate.treecompare.symmetric_difference(*args)
-    n = len(args[0].leaf_nodes())
+def rf_dist(trees):
+    """
+    Calculates the Robinson-Foulds distance between two trees.
+    """
+    assert len(trees) == 2
+    dist = dendropy.calculate.treecompare.symmetric_difference(*trees)
+    n = len(trees[0].leaf_nodes())
 
     return dist/(2*(n-3))
 
-def bhv_dist(args, batch_folder, rooted):
+def bhv_dist(trees, batch_folder, rooted):
     """
-    Wrapper for GTP code
+    Wrapper for Owen and Provan's GTP code to calculate the BHV 
+    distance between two trees.
     """
 
     # make temporary outfiles for GTP
@@ -48,7 +51,7 @@ def bhv_dist(args, batch_folder, rooted):
     try:
         # open temporary file to hold trees
         tfile = os.fdopen(fd, "w")
-        list(map(tfile.write, map(newick, args)))
+        list(map(tfile.write, map(newick, trees)))
         tfile.close()
         
         # call GTP
@@ -87,7 +90,6 @@ def newick(tree):
                           suppress_internal_node_labels=True,
                           suppress_rooting=True)
 
-
 def codimension(comb_block):
     """
     find longest subblock in 'combinatorial types' block
@@ -100,15 +102,9 @@ def codimension(comb_block):
     get_length = lambda x: len(x.split(","))
     return max(map(get_length, cleaned_block))
 
-
-    assert len(args) == 2
-
-def to_decimal(x):
-    return decimal.Decimal(str(x))
-
 def check_flatten(x):
     """
-    Flatten if it's a list of lists
+    Flatten if it's a list of lists or tuples.
     """
     if x and type(x[0]) == list or type(x[0]) == tuple:
         x = list(flatten(*x))
@@ -133,8 +129,8 @@ def vector2list(v):
 
     m = vector2upper_tri_matrix(v)
 
-    # fill lower triangle, convert to list, convert to elements to Decimal
-    return list(map(lambda x: decimal.Decimal(str(x)), (m + m.T).flatten()))
+    # fill lower triangle, convert to list, convert elements to Decimal
+    return list(map(lambda x: to_decimal(x), (m + m.T).flatten()))
 
 def make_taxa(nexus_file):
     taxa = []
@@ -150,11 +146,11 @@ def make_taxa(nexus_file):
 
     return dendropy.TaxonNamespace(taxa, label=nexus_file)
 
-def unroot(tree):
+def mod_root(root, tree):
     """
-    Converts rooted tree into unrooted tree.
+    Converts tree into rooted/unrooted tree.
     """
-    tree.is_rooted = False
+    tree.is_rooted = root
     tree.update_bipartitions()
     return tree
 
@@ -190,7 +186,7 @@ def reconstruct_trees(taxa, vectors, true_file):
         return dist_matrix
 
     # make trees
-    distances = list(map(get_pdm, vectors))
+    dist_matrices = list(map(get_pdm, vectors))
     nj = lambda x: x.nj_tree()
     upgma = lambda x: x.upgma_tree()
 
@@ -213,7 +209,11 @@ def reconstruct_trees(taxa, vectors, true_file):
                 plotpath = os.path.join(heatpath, plotname)
                 np.savetxt(plotpath, dist)
 
-    return list(map(unroot, map(nj, distances))), list(map(upgma, distances))
+    # manually root/unroot
+    nj_trees = list(map(partial(mod_root, False), map(nj, dist_matrices)))
+    upgma_trees = list(map(partial(mod_root, True), map(upgma, dist_matrices)))
+
+    return nj_trees, upgma_trees
 
 def percentiles_of(x):
     """
@@ -235,11 +235,22 @@ def percentiles_of(x):
             index = n - 1
 
         ind = math.floor(index)
-        index = decimal.Decimal(str(index))
+        index = to_decimal(index)
 
         return x[ind] + index%1 * (x[ind+1] - x[ind]) if index % 1 else x[ind]
 
     return percentile
+
+def param_value(s, tag):
+    """
+    Finds the value of the parameter specified by 'tag' in 's'.
+    """
+    params = os.path.basename(s).split("_")
+    correct_params = list(filter(lambda tags: tag in tags, params))
+    
+    assert len(correct_params) == 1
+    
+    return correct_params[0][len(tag):]
 
 def calc(error, mode="stats", sol_file=""):
     # calculations
@@ -255,10 +266,7 @@ def calc(error, mode="stats", sol_file=""):
 
     if mode == "stats":
         # calculate normalized error
-        def param_value(tag):
-            return list(filter(lambda tags: tag in tags,
-                               os.path.basename(sol_file).split("_")))[-1][1:]
-        species_depth = int(param_value('d'))
+        species_depth = int(param_value(sol_file, 'd'))
         theoretical_max = 2 * species_depth 
         nrmse = rmse / theoretical_max
 
@@ -272,7 +280,7 @@ def calc(error, mode="stats", sol_file=""):
 
     return retval
 
-def get_stats(solution_file, true_file):
+def leaf_stats(solution_file, true_file, batch_folder):
     """
     Finds quartiles, Root Mean Squared Error (RMSE), and Normalized
     Root Mean Squared Error (NRMSE) using files with solution vectors
@@ -338,37 +346,38 @@ def tree_stats(solution_file, true_file, tree_gen, batch_folder):
     tree_calc = partial(calc, mode="tree")
     return list(map(tree_calc, tree_dists)) + well_sep, tree_dists_plus
 
-def write_to(batch_folder, solution_file, desc=""):
+def write_stats(desc, fun, tup):
     """
-    Creates a function that writes x to the relevant file in the stats
-    subdirectory. 
+    Writes data to the relevant file in the stats subdirectory.
+
+    'fun' is a data generating function which takes as input an 
+    exploded 'tup'. desc is a description tag for the filenames.
     """
+
+    solution_file = tup[0]
+    batch_folder = tup[-1]
+    data = fun(*tup)
+
     stats = os.path.join(batch_folder, "stats")
     if not os.path.isdir(stats):
         os.makedirs(stats)
 
     basename = os.path.basename(solution_file)[:-4] + desc
 
-    def write(x):
-        """
-        Writes x to file.
-        """
-        assert len(x) == 2
+    assert len(data) == 2
 
-        # separate and flatten data
-        summary, all_data = list(map(check_flatten, x))
-        
-        # write data
-        with open(os.path.join(stats, basename + '.txt'), 'w') as f:
-            f.write(" ".join(map(str, summary)))
-        with open(os.path.join(stats, basename + "_all.txt"), 'w')as f:
-            f.write(" ".join(map(str, all_data)))
-
-    return write
+    # separate and flatten data
+    summary, all_data = list(map(check_flatten, data))
+    
+    # write data
+    with open(os.path.join(stats, basename + '.txt'), 'w') as f:
+        f.write(" ".join(map(str, summary)))
+    with open(os.path.join(stats, basename + "_all.txt"), 'w')as f:
+        f.write(" ".join(map(str, all_data)))
 
 def match(infile, file_list, tags):
     """
-    Finds files in file_list containing the same tag value as infile.
+    Finds files in file_list containing the same tag value(s) as infile.
     """
     if type(tags) is list:
         tag_values = list(filter(lambda x: any(tag in x for tag in tags), 
@@ -418,18 +427,21 @@ def analyze(batch_folder):
     nex2trees = {n: partial(reconstruct_trees, make_taxa(n)) for n in nexus_files}
     match_sol_treegen = lambda sol: nex2trees[sol2nexus[sol]]
 
-    # make function to write stats
-    def write_stats(tup): 
-        write_to(batch_folder, tup[0])(get_stats(*tup))
-    def write_trees(tup):
-        write_to(batch_folder, tup[0], '_tree')(tree_stats(*tup, batch_folder))
+    # make functions to create and write stats
+    write_leaves = partial(write_stats, '', leaf_stats)
+    write_trees = partial(write_stats, '_tree', tree_stats)
 
-    # write stats
-    stats_files = zip(sol_files, map(match_sol_true, sol_files))
+    # make tuples to create and write stats 
+    stats_files = zip(sol_files, 
+                      map(match_sol_true, sol_files),
+                      [batch_folder]*len(sol_files))
     tree_files = zip(sol_files,
                      map(match_sol_true, sol_files), 
-                     map(match_sol_treegen, sol_files))
-    list(map(write_stats, stats_files))
+                     map(match_sol_treegen, sol_files),
+                     [batch_folder]*len(sol_files))
+
+    # create and write stats
+    list(map(write_leaves, stats_files))
     list(map(write_trees, tree_files))
 
 def values_from_tags(tags):
@@ -500,12 +512,14 @@ def get_row(vect, param_values, exp_folder, rowsize, modifier=""):
         # data is for tree_all and must be padded depending on the
         # number of trees 
         if rowsize != len(row):
-            # split data into 6 pieces 
-            k = int(len(data)/6)
+            # split data into num_pieces pieces 
+            num_pieces = 6
+            k = int(len(data)/num_pieces)
+
             split_k = [data[i:i+k] for i in range(0, len(data), k)]
 
             # pad each piece
-            pad_len = int((rowsize - len(params) - len(data) - 4)/6)
+            pad_len = int((rowsize - len(params) - len(data) - 4)/num_pieces)
             padded = [q + [float('nan')] * pad_len for q in split_k]
 
             # find zero ratio
@@ -538,6 +552,10 @@ def get_row(vect, param_values, exp_folder, rowsize, modifier=""):
         print("rowsize: {}, len(row): {}".format(rowsize, len(row)))
         print("pad_len: {}, k: {}".format(pad_len, k))
         print("data: {}".format(list(map(len, split_k))))
+        raise e
+
+    except FileNotFoundError as e:
+        print("Please re-run the 'analyze' step in experiment.py.")
         raise e
 
     return row

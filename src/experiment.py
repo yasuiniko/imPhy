@@ -6,37 +6,36 @@ Options:
 
   -f                    Overwrite files that may already exist within
                         the experiment folder.          [default: False]
+  -p                    Parallel mode.                  [default: False]
   -t                    Testing mode.                   [default: False]
 """
 
 import docopt
+from functools import partial
 from itertools import product
 import os
 import shutil
 import subprocess
 
-from analyze import compile_stats
+from compile_stats import compile_stats
 from batch import run_batch
 import tools
 
-def setup(batch_folder, methods, probs, flow_dict, force):
+def setup(batch_folder, methods, probs, flow_dict, force, tup):
 
-    def one_run(tup):
-        species_depth, n_gene_trees, n_ind, Ne, n_sp, n_sp_trees = tup
+    species_depth, n_gene_trees, n_ind, Ne, n_sp, n_sp_trees = tup
 
-        run_batch(batch_folder=batch_folder.format(*tup),
-                  species_depth=species_depth,
-                  n_gene_trees=n_gene_trees,
-                  n_ind=n_ind,
-                  n_sp=n_sp,
-                  n_sp_trees=n_sp_trees,
-                  Ne=Ne,
-                  prob_missing=probs,
-                  methods=methods,
-                  flow_dict=flow_dict,
-                  force=force)
-
-    return one_run
+    run_batch(batch_folder=batch_folder.format(*tup),
+              species_depth=species_depth,
+              n_gene_trees=n_gene_trees,
+              n_ind=n_ind,
+              n_sp=n_sp,
+              n_sp_trees=n_sp_trees,
+              Ne=Ne,
+              prob_missing=probs,
+              methods=methods,
+              flow_dict=flow_dict,
+              force=force)
 
 if __name__ == "__main__":
     args = docopt.docopt(__doc__)
@@ -44,6 +43,7 @@ if __name__ == "__main__":
     # get args
     exp_folder = args['<exp_folder>']
     test, experiment = args['-t'], not args['-t']
+    parallel = args['-p']
     force = args['-f']
 
     # set up filesystem
@@ -58,13 +58,13 @@ if __name__ == "__main__":
 
     # test run
     if test:
-        c = [1]#, 0.7, 0.8, 0.9, 1, 2, 4, 6, 8, 10, 20]
+        c = [20]#, 0.7, 0.8, 0.9, 1, 2, 4, 6, 8, 10, 20]
         c = list(map(float, c))
         genes = [10, 20]#, 40, 50, 60]
-        inds = [5,10]#, 6, 10]
+        inds = [8]#, 6, 10]
         methods = [1,2]#, 4]
         probs = [1]#, 0.05, 0.2]
-        species = [3]#, 3, 5]
+        species = [2, 4, 6]#, 3, 5]
         pop_size = [10000]
         depth = list(set(map(lambda x: int(x[0]*x[1]), product(c, pop_size))))
         trees = [1] # number of species trees
@@ -89,7 +89,7 @@ if __name__ == "__main__":
         depth = list(set(map(lambda x: int(x[0]*x[1]), product(c, pop_size))))
         
         # Options to set 
-        flow_dict = {"all":True,        # overrides other options
+        flow_dict = {"all":False,        # overrides other options
                      "generate":False,  # generate trees
                      "drop":False,      # drop leaves
                      "impute":False,    # impute missing leaves
@@ -99,13 +99,13 @@ if __name__ == "__main__":
     
     # batch folder naming scheme
     batch_folder = os.path.join(exp_folder, tools.batch_general)
-    one_batch_run = setup(batch_folder, methods, probs, flow_dict, force)
+    batch_run = partial(setup, batch_folder, methods, probs, flow_dict, force)
     batch_iterator = product(depth, genes, inds, pop_size, species, trees)
     
-    # choose run method depending on testing or not
-    run_parallel= lambda: tools.parmap(one_batch_run, batch_iterator)
-    run_serial = lambda: list(map(one_batch_run, batch_iterator))
-    f = run_parallel if experiment else run_serial
+    # choose run method
+    run_parallel= lambda: tools.parmap(batch_run, batch_iterator)
+    run_serial = lambda: list(map(batch_run, batch_iterator))
+    f = run_parallel if parallel else run_serial
 
     # run experiment
     tools.timeit(f, "solving all problems")

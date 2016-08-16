@@ -44,7 +44,7 @@ import shutil
 import subprocess
 import time
 
-from analyze import analyze
+from compile_stats import analyze
 from generateTrees import generateTrees
 from tools import timeit
 
