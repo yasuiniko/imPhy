@@ -5,7 +5,7 @@
 
 using namespace std;
 
-// UPDATED at 12.05pm (CST) 07/20/2016
+// UPDATED at 10.09pm (Italy Time) 08/10/2016
 
 class TreeDistance{
 private:
@@ -124,7 +124,11 @@ int main(int argc, const char * argv[]) {
         }
     }while(!done);
     
+    for(int i=0;i<nSpecies;i++){
+        cout << "Species " << i << ": " << eps[i] << endl;
+    }
     
+    cout << endl << m << endl;
     
     
     try{
@@ -140,14 +144,21 @@ int main(int argc, const char * argv[]) {
                 x[t][i]=new GRBVar[nLeaves];
                 for(int j=i+1;j<nLeaves;j++){
                     if (TreeDistances.at(t).getDistanceAt(i,j)==-1){
-                        char name[10];
-                        sprintf(name, "x(%d,%d,%d)", t, i, j);
-                        x[t][i][j]=model.addVar(0,1,0,'C',name);
+                        if(translatePosToSpecies(nSpecies, nIndividuals, i)!=translatePosToSpecies(nSpecies, nIndividuals, j)){
+                            char name[10];
+                            sprintf(name, "x(%d,%d,%d)", t, i, j);
+                            x[t][i][j]=model.addVar(0,m,0,'C',name);
+                        }
+                        else{
+                            char name[10];
+                            sprintf(name, "x(%d,%d,%d)", t, i, j);
+                            x[t][i][j]=model.addVar(0,eps[translatePosToSpecies(nSpecies, nIndividuals, i)],0,'C',name);
+                        }
                     }
                     else{
                         char name[10];
                         sprintf(name, "x(%d,%d,%d)", t, i, j);
-                        x[t][i][j]=model.addVar(TreeDistances.at(t).getDistanceAt(i,j)/m,TreeDistances.at(t).getDistanceAt(i,j)/m,0,'C',name);
+                        x[t][i][j]=model.addVar(TreeDistances.at(t).getDistanceAt(i,j),TreeDistances.at(t).getDistanceAt(i,j),0,'C',name);
                     }
                 }
             }
@@ -160,7 +171,18 @@ int main(int argc, const char * argv[]) {
         
         // ALL SPECIES OBJECTIVE
         
-        /*for(int t1=0;t1<nGenes;t1++){
+        for(int t1=0;t1<nGenes;t1++){
+            for(int t2=t1+1;t2<nGenes;t2++){
+                for(int i=0;i<nLeaves;i++){
+                    for(int j=i+1;j<nLeaves;j++){
+                            obj+=(x[t1][i][j]-x[t2][i][j])*(x[t1][i][j]-x[t2][i][j]);
+                    }
+                }
+            }
+        }
+        // ONLY DIFFERENT SPECIES OBJECTIVE
+        /*
+         for(int t1=0;t1<nGenes;t1++){
          for(int t2=t1+1;t2<nGenes;t2++){
          for(int i=0;i<nLeaves;i++){
          for(int j=i+1;j<nLeaves;j++){
@@ -169,39 +191,30 @@ int main(int argc, const char * argv[]) {
          }
          }
          }
-         }*/
-        
-        // ONLY DIFFERENT SPECIES OBJECTIVE
-        
-        for(int t1=0;t1<nGenes;t1++){
-            for(int t2=t1+1;t2<nGenes;t2++){
-                for(int i=0;i<nLeaves;i++){
-                    for(int j=i+1;j<nLeaves;j++){
-                        if(translatePosToSpecies(nSpecies, nIndividuals, i)!=translatePosToSpecies(nSpecies, nIndividuals, j))
-                            obj+=(x[t1][i][j]-x[t2][i][j])*(x[t1][i][j]-x[t2][i][j]);
-                    }
-                }
-            }
-        }
+         }
+         */
         
         model.setObjective(obj);
         
-        for(int t1=0;t1<nGenes;t1++){
-            for(int t2=0;t2<nGenes;t2++){
-                for(int i=0;i<nLeaves;i++){
-                    for(int j=i+1;j<nLeaves;j++){
-                        if(translatePosToSpecies(nSpecies, nIndividuals, i)==translatePosToSpecies(nSpecies, nIndividuals, j)){
-                            float b=eps[translatePosToSpecies(nSpecies, nIndividuals, i)]*eps[translatePosToSpecies(nSpecies, nIndividuals, i)];
-                            model.addQConstr((x[t1][i][j]-x[t2][i][j])*(x[t1][i][j]-x[t2][i][j])<=b/(m*m));
-                        }
-                    }
-                }
-            }
-        }
+        /*for(int t1=0;t1<nGenes;t1++){
+         for(int t2=0;t2<nGenes;t2++){
+         for(int i=0;i<nLeaves;i++){
+         for(int j=i+1;j<nLeaves;j++){
+         if(translatePosToSpecies(nSpecies, nIndividuals, i)==translatePosToSpecies(nSpecies, nIndividuals, j)){
+         float b=eps[translatePosToSpecies(nSpecies, nIndividuals, i)]*eps[translatePosToSpecies(nSpecies, nIndividuals, i)];
+         model.addQConstr((x[t1][i][j]-x[t2][i][j])*(x[t1][i][j]-x[t2][i][j])<=b/(m*m));
+         }
+         }
+         }
+         }
+         }*/
         
         
         model.update();
-        model.write("./model/test.lp");
+        
+        // Uncomment below to write the model file.
+        // model.write("./model/test.lp");
+        
         model.optimize();
         char fname[20];
         sprintf(fname, "./sol/%s.sol", argv[1]);
@@ -209,7 +222,7 @@ int main(int argc, const char * argv[]) {
         for(int t=0;t<nGenes;t++){
             for(int i=0;i<nLeaves;i++){
                 for(int j=i+1;j<nLeaves;j++){
-                    f << x[t][i][j].get(GRB_DoubleAttr_X)*m << "\t";
+                    f << x[t][i][j].get(GRB_DoubleAttr_X) << "\t";
                 }
             }
             f << endl;
@@ -224,7 +237,7 @@ int main(int argc, const char * argv[]) {
                 for(int j=i+1;j<nLeaves;j++){
                     in2 >> trueDistance;
                     if(TreeDistances.at(t).getDistanceAt(i,j)==-1){
-                        cout << t << " " << i << " " << j << "\t: " << x[t][i][j].get(GRB_DoubleAttr_X)*m << " vs. " << trueDistance << endl;
+                        cout << t << " " << i << " " << j << "\t: " << x[t][i][j].get(GRB_DoubleAttr_X) << " vs. " << trueDistance << endl;
                     }
                 }
             }
