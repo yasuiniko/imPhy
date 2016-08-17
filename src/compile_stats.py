@@ -148,7 +148,8 @@ def make_taxa(nexus_file):
 
 def mod_root(root, tree):
     """
-    Converts tree into rooted/unrooted tree.
+    Converts tree into rooted/unrooted tree. Currently being implemented
+    in DendroPy. 
     """
     tree.is_rooted = root
     tree.update_bipartitions()
@@ -185,7 +186,7 @@ def reconstruct_trees(taxa, vectors, true_file):
                                    is_allow_new_taxa=False)
         return dist_matrix
 
-    # make trees
+    # make distance matrices
     dist_matrices = list(map(get_pdm, vectors))
     nj = lambda x: x.nj_tree()
     upgma = lambda x: x.upgma_tree()
@@ -655,6 +656,7 @@ def compile_stats(exp_folder):
     sns.set_palette('colorblind')
     heatpath = os.path.join(exp_folder, 'heatmaps')
     fig = plt.figure()
+
     for plotname in os.listdir(heatpath):
         if plotname[-4:] == '.png' or plotname[0] == '.': continue
         plotpath = os.path.join(heatpath, plotname)
@@ -663,6 +665,7 @@ def compile_stats(exp_folder):
         name, labelstring = plotpath.split('__')
         labels = labelstring.split("_")
 
+        # file gymnastics
         outname = os.path.join(heatpath, name)
         ind = name.split("_")[-1]
         _, plot_name = os.path.split(name[:-(len(ind)+1)])
@@ -672,38 +675,48 @@ def compile_stats(exp_folder):
                                  batch_base, 
                                  "data",
                                  plot_name + ".txt")
+
+        # extract distance matrix for tree with dropped leaves
         with open(data_name, 'r') as f:
             lines = (line for line in f if len(line.split()) > 2)
             all_dropped = np.loadtxt(lines)
             dropped = vector2upper_tri_matrix(all_dropped[int(ind)])
             dropped += dropped.T
 
+        # convert -1 to -max in the dropped matrix for visualization
         dmax = max(np.amax(dropped), np.amax(dist))
-        set_min = np.vectorize(lambda x: -dmax if x == -1 else x)
-        dropped = set_min(dropped)
+        dropped = np.vectorize(lambda x: -dmax if x == -1 else x)(dropped)
 
+        # matrix of tree with dropped leaves
         dhm = pd.DataFrame(dropped, columns=labels, index=labels)
         dhm = dhm.reindex_axis(sorted(dhm.columns), axis='columns')
         dhm = dhm.reindex_axis(sorted(dhm.index), axis='index')
 
+        # matrix of tree with imputed leaves
         ihm = pd.DataFrame(dist, columns=labels, index=labels)
         ihm = ihm.reindex_axis(sorted(ihm.columns), axis='columns')
         ihm = ihm.reindex_axis(sorted(ihm.index), axis='index')
 
-        sns.heatmap(dhm, yticklabels=labels)
+        # dropped heatmap
+        sns.heatmap(dhm)
         fig.savefig(outname + "_dropped")
         fig.clear()
 
-        sns.heatmap(ihm, yticklabels=labels, vmin=-dmax)
+        # imputed heatmap
+        sns.heatmap(ihm, vmin=-dmax)
         fig.savefig(outname + "_imputed")
         fig.clear()
 
+        # remove heatmap data file
         os.remove(plotpath)
         
     plt.close()
 
-    make_graphs = "Rscript_$_summary.R_$_{}".format(exp_folder)
-    subprocess.check_call(make_graphs.split("_$_"))
+    # run R plots for descriptive statistics
+    summary_graphs = "Rscript_$_summary.R_$_{}".format(exp_folder)
+    subprocess.check_call(summary_graphs.split("_$_"))
+    outlier_counts = "Rscript_$_outliers.R_$_{}".format(exp_folder)
+    subprocess.check_call(outlier_counts.split("_$_"))
 
 if __name__ == '__main__':
     args = docopt.docopt(__doc__)

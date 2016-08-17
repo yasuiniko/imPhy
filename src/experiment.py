@@ -4,6 +4,9 @@ Usage: experiment.py <exp_folder> [options]
 Options:
   <exp_folder>          Path to destination folder for the sets of data.
 
+  -c                    Compiles statistics about the experiment after
+                        running. Requires matplotlib, pandas, and
+                        seabornself.  
   -f                    Overwrite files that may already exist within
                         the experiment folder.          [default: False]
   -p                    Parallel mode.                  [default: False]
@@ -42,9 +45,10 @@ if __name__ == "__main__":
 
     # get args
     exp_folder = args['<exp_folder>']
-    test, experiment = args['-t'], not args['-t']
-    parallel = args['-p']
+    stats = args['-c']
     force = args['-f']
+    parallel = args['-p']
+    test, experiment = args['-t'], not args['-t']
 
     # set up filesystem
     if exp_folder[0] != '/':
@@ -110,3 +114,5 @@ if __name__ == "__main__":
     # run experiment
     tools.timeit(f, "solving all problems")
 
+    if stats:
+        compile_stats(exp_folder)
