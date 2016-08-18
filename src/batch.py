@@ -46,7 +46,7 @@ import time
 
 from compile_stats import analyze
 from generateTrees import generateTrees
-from tools import timeit
+from tools import ext, ext_len, gzip_to, gunzip_to, timeit
 
 def generate(nexus, d, n_gene_trees, n_sp, n_ind, Ne, n_sp_trees):
     
@@ -64,18 +64,22 @@ def drop(batch_folder, nexus, data, n_sp, prob_missing, force):
     
     # function to call RandomGenerator.R
     def call_R(args):
+
+        # setup
         p_drop, fname = args
         in_name = os.path.join(nexus, fname)
         namelist = fname[:-4].split("_")
         namelist.append("p{}".format(p_drop))
         out_name = os.path.join(data, "_".join(namelist))
 
+        # remove old files if force is true
         if force:
             if os.path.exists(out_name+".txt"):
                 os.remove(out_name+".txt")
             if os.path.exists(out_name+"_true.txt"):
                 os.remove(out_name+"_true.txt")
 
+        # call the R script               
         subprocess.check_call(["Rscript",
                                "RandomGenerator.R",
                                in_name,
@@ -83,31 +87,30 @@ def drop(batch_folder, nexus, data, n_sp, prob_missing, force):
                                "-p{}".format(p_drop),
                                "-s{}".format(n_sp)])
 
+        # compress data files
+        dest_root = os.path.split(out_name)[0]
+        gzip_to(dest_root, out_name+'.txt')
+        gzip_to(dest_root, out_name+'_true.txt')
+
     # identify names of gene trees
     gene_trees = lambda fname: '_e' in fname.lower()
     basenames = filter(gene_trees, os.listdir(nexus))
 
     # call RandomGenerator.R
-    f = lambda: list(map(call_R,
-                         itertools.product(prob_missing, basenames)))
+    f = lambda: list(map(call_R, itertools.product(prob_missing, basenames)))
     timeit(f, "dropping leaves")
 
 def impute(batch_folder, data, solutions, batch_base, methods):
+    """
+    Imputes the batch.
+    """
 
-    # function to move or copy files
-    def move(dest, s="move"):
-        if s == "move":
-            def to(src):
-                os.rename(src, os.path.join(dest, os.path.basename(src)))
-        else:
-            def to(src):
-                shutil.copy(src, dest)
-        return to
-
-    # function to call optimizer
     def call_imp(args):
+        """
+        Calls the cpp imputation software.
+        """
         basename, method = args
-        nameroot = basename[:-4]
+        nameroot = basename[:-ext_len]
         program = "./missing{}.o".format(method)
         
         f = lambda: subprocess.check_call([program, nameroot])
@@ -131,13 +134,14 @@ def impute(batch_folder, data, solutions, batch_base, methods):
     # set up files for optimizer
     cpp_data = os.path.abspath('data')
     cpp_sol = os.path.abspath('sol')
-    dropped_dists = lambda fname: fname[-8:-4] != 'true'
+    dropped_dists = lambda fname: '_true.' not in fname
     basenames = list(filter(dropped_dists, os.listdir(data)))
-    in_basenames = lambda f: f[:-4] in map(lambda x: x[:-4], basenames)
 
     # copy files into cpp_data
     data_path = lambda f: os.path.join(data, f)
-    list(map(move(cpp_data, "copy"), map(data_path, os.listdir(data))))
+    data_files = map(data_path, basenames)
+    to_cpp_data = partial(gunzip_to, cpp_data)
+    list(map(to_cpp_data, data_files))
 
     # impute files
     f = lambda: list(map(call_imp, itertools.product(basenames, methods)))
@@ -145,7 +149,7 @@ def impute(batch_folder, data, solutions, batch_base, methods):
 
     # delete files in cpp_data
     c_data_path = lambda f: os.path.join(cpp_data, f)
-    data_files = list(map(lambda x: x[:-4], os.listdir(data)))
+    data_files = list(map(lambda x: x[:-ext_len], os.listdir(data)))
     in_data = lambda f: f[:-4] in data_files
     list(map(os.remove,
              map(c_data_path, 
@@ -155,11 +159,13 @@ def impute(batch_folder, data, solutions, batch_base, methods):
     # move files to solutions
     c_sol_path = lambda f: os.path.join(cpp_sol, f)
     batch_ids = batch_base.split("_")
-    in_sols = lambda f: set(f.split("_")[:len(batch_ids)]) <= set(batch_ids)
-    list(map(move(solutions, "move"),
-             map(c_sol_path,
-                 filter(in_sols,
-                        os.listdir(cpp_sol)))))
+    in_batch = lambda f: set(f.split("_")[:len(batch_ids)]) <= set(batch_ids)
+    correct_files = filter(in_batch, os.listdir(cpp_sol))
+    correct_paths = map(c_sol_path, correct_files)
+    to_sols = partial(gzip_to, solutions)
+    list(map(to_sols, correct_paths))
+
+    # move back up one level
     os.chdir('..')
 
 def make_flow(flow_dict):

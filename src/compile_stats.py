@@ -204,7 +204,7 @@ def reconstruct_trees(taxa, vectors, true_file):
             if random.random() < 0.01:
                 upper = vector2upper_tri_matrix(vect)
                 dist = upper + upper.T
-                plotname = "{}_{}__{}".format(dropped_name[:-4], 
+                plotname = "{}_{}__{}.gz".format(dropped_name[:-ext_len], 
                                               i,
                                               "_".join(taxa.labels()))
                 plotpath = os.path.join(heatpath, plotname)
@@ -292,7 +292,8 @@ def leaf_stats(solution_file, true_file, batch_folder):
     true_list = np.loadtxt(true_file)
 
     if sol_list.size == 0:
-        return ["Solution file was empty. Please check for imputation errors."]
+        print("Solution file was empty. Please check for imputation errors.")
+        return []
 
     # get lists of distances
     imp_dists = list(iterflatten(map(vector2list, sol_list)))
@@ -347,33 +348,32 @@ def tree_stats(solution_file, true_file, tree_gen, batch_folder):
     tree_calc = partial(calc, mode="tree")
     return list(map(tree_calc, tree_dists)) + well_sep, tree_dists_plus
 
-def write_stats(desc, fun, tup):
+def write_stats(desc, gen_data, tup):
     """
     Writes data to the relevant file in the stats subdirectory.
 
-    'fun' is a data generating function which takes as input an 
+    'gen_data' is a data generating function which takes as input an 
     exploded 'tup'. desc is a description tag for the filenames.
     """
 
     solution_file = tup[0]
     batch_folder = tup[-1]
-    data = fun(*tup)
+    data = gen_data(*tup)
 
     stats = os.path.join(batch_folder, "stats")
     if not os.path.isdir(stats):
         os.makedirs(stats)
 
-    basename = os.path.basename(solution_file)[:-4] + desc
-
+    basename = os.path.basename(solution_file)[:-ext_len] + desc
     assert len(data) == 2
 
     # separate and flatten data
     summary, all_data = list(map(check_flatten, data))
     
     # write data
-    with open(os.path.join(stats, basename + '.txt'), 'w') as f:
+    with gzip.open(os.path.join(stats, basename + '.txt.gz'), 'wt') as f:
         f.write(" ".join(map(str, summary)))
-    with open(os.path.join(stats, basename + "_all.txt"), 'w')as f:
+    with gzip.open(os.path.join(stats, basename + "_all.txt.gz"), 'wt')as f:
         f.write(" ".join(map(str, all_data)))
 
 def match(infile, file_list, tags):
@@ -382,9 +382,9 @@ def match(infile, file_list, tags):
     """
     if type(tags) is list:
         tag_values = list(filter(lambda x: any(tag in x for tag in tags), 
-                                 infile[:-4].split("_")))
+                                 infile[:-ext_len].split("_")))
     else:
-        tag_values = list(filter(lambda x: tags in x, infile[:-4].split("_")))
+        tag_values = list(filter(lambda x: tags in x, infile[:-ext_len].split("_")))
     
     match_files = list(filter(lambda f: all(tag in f for tag in tag_values), 
                               file_list))
@@ -416,8 +416,8 @@ def analyze(batch_folder):
         return sorted(list(filter(has_tag, get_files(subdir))))
 
     # get files 
-    true_files = tagged_files("data", "_true.txt")
-    sol_files = tagged_files("solutions", ".sol")
+    true_files = tagged_files("data", "_true.txt.gz")
+    sol_files = tagged_files("solutions", ".sol.gz")
     nexus_files = tagged_files("nexus", "_e")
 
     # match solution files to files from which they were created
@@ -454,10 +454,10 @@ def values_from_tags(tags):
     valid_param = lambda s: s[0].isalpha() and s[1].isdigit()
     # split by underscore
     def split(s):
-        if list(filter(lambda x: x.isdigit(), s[-4:])):
+        if any(map(lambda x: x.isdigit(), s[-ext_len:])):
             return list(filter(lambda x: x, s.split("_")))
         else:
-            return list(filter(lambda x: x, s[:-4].split("_")))
+            return list(filter(lambda x: x, s[:-ext_len].split("_")))
 
     param_list = set(filter(valid_param, iterflatten(map(split, tags))))  
 
@@ -498,7 +498,7 @@ def get_row(vect, param_values, exp_folder, rowsize, modifier=""):
     # get paths
     batch_folder = batch_analyze.format(*params)
     nameroot = fileroot.format(*params)
-    filename = nameroot + modifier + ".txt"
+    filename = nameroot + modifier + ext
     stats_path = os.path.join(exp_folder,
                               batch_folder,
                               "stats",
@@ -533,6 +533,7 @@ def get_row(vect, param_values, exp_folder, rowsize, modifier=""):
             assert len(row) == rowsize
 
     except ValueError as e:
+        print(stats_path)
         print("Filename: {}".format(filename))
         print("k: {}".format(k))
         raise e
@@ -674,10 +675,10 @@ def compile_stats(exp_folder):
         data_name = os.path.join(exp_folder,
                                  batch_base, 
                                  "data",
-                                 plot_name + ".txt")
+                                 plot_name + ext)
 
         # extract distance matrix for tree with dropped leaves
-        with open(data_name, 'r') as f:
+        with gzip.open(data_name, 'rt') as f:
             lines = (line for line in f if len(line.split()) > 2)
             all_dropped = np.loadtxt(lines)
             dropped = vector2upper_tri_matrix(all_dropped[int(ind)])

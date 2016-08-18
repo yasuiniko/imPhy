@@ -1,8 +1,34 @@
 import decimal
 from functools import reduce
+import gzip
 import itertools
 import multiprocessing
+import os
+import shutil
 import time
+
+########### CONSTANTS ###########
+gene =           'd{}_g{}_i{}_n{}_s{}_e{}.nex'
+batch_analyze =  "d{0}_g{2}_i{3}_n{5}_s{7}"
+batch_general =  "d{}_g{}_i{}_n{}_s{}"
+fileroot =       "d{0}_g{2}_i{3}_n{5}_s{7}_e{1}_m{4}_p{6}"
+ext = ".txt.gz"
+ext_len = len(ext)
+
+########### FUNCTIONS ###########
+
+def gunzip_to(dest_root, src):
+    dest = os.path.join(dest_root, os.path.basename(src)[:-3])
+    with gzip.open(src, 'rt') as f_in:
+        with open(dest, 'wt') as f_out:
+            shutil.copyfileobj(f_in, f_out)
+
+def gzip_to(dest_root, src):
+    dest = os.path.join(dest_root, os.path.basename(src)+'.gz')
+    with open(src, 'rt') as f_in:
+        with gzip.open(dest, 'wt') as f_out:
+            shutil.copyfileobj(f_in, f_out)
+    os.remove(src)
 
 def to_decimal(x):
     return decimal.Decimal(str(x))
@@ -49,11 +75,6 @@ def parmap(f, X, nprocs=multiprocessing.cpu_count()):
     [p.join() for p in proc]
 
     return [x for i, x in sorted(res)]
-
-gene =           'd{}_g{}_i{}_n{}_s{}_e{}.nex'
-batch_analyze =  "d{0}_g{2}_i{3}_n{5}_s{7}"
-batch_general =  "d{}_g{}_i{}_n{}_s{}"
-fileroot =       "d{0}_g{2}_i{3}_n{5}_s{7}_e{1}_m{4}_p{6}"
 
 def prop_separated_trees(treelist, get_species=lambda taxon: taxon.label[0]):
     """

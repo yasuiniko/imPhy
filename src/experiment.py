@@ -45,7 +45,7 @@ if __name__ == "__main__":
 
     # get args
     exp_folder = args['<exp_folder>']
-    stats = args['-c']
+    comp_stats = args['-c']
     force = args['-f']
     parallel = args['-p']
     test, experiment = args['-t'], not args['-t']
@@ -66,9 +66,9 @@ if __name__ == "__main__":
         c = list(map(float, c))
         genes = [10, 20]#, 40, 50, 60]
         inds = [8]#, 6, 10]
-        methods = [1,2]#, 4]
-        probs = [1]#, 0.05, 0.2]
-        species = [2, 4, 6]#, 3, 5]
+        methods = [1]#, 4]
+        probs = [8]#, 0.05, 0.2]
+        species = [2]#, 3, 5]
         pop_size = [10000]
         depth = list(set(map(lambda x: int(x[0]*x[1]), product(c, pop_size))))
         trees = [1] # number of species trees
@@ -114,5 +114,5 @@ if __name__ == "__main__":
     # run experiment
     tools.timeit(f, "solving all problems")
 
-    if stats:
+    if comp_stats:
         compile_stats(exp_folder)
