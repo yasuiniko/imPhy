@@ -5,7 +5,8 @@
 
 using namespace std;
 
-// UPDATED at 10.09pm (Italy Time) 08/10/2016
+// UPDATED at 9.53pm (Central Time) 08/17/2016
+// Removed true file comparisons
 
 class TreeDistance{
 private:
@@ -228,20 +229,6 @@ int main(int argc, const char * argv[]) {
             f << endl;
         }
         
-        sprintf(fname, "./data/%s_true.txt", argv[1]);
-        
-        ifstream in2(fname);
-        float trueDistance;
-        for(int t=0;t<nGenes;t++){
-            for(int i=0;i<nLeaves;i++){
-                for(int j=i+1;j<nLeaves;j++){
-                    in2 >> trueDistance;
-                    if(TreeDistances.at(t).getDistanceAt(i,j)==-1){
-                        cout << t << " " << i << " " << j << "\t: " << x[t][i][j].get(GRB_DoubleAttr_X) << " vs. " << trueDistance << endl;
-                    }
-                }
-            }
-        }
         
         
         
