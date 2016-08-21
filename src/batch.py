@@ -138,19 +138,21 @@ def impute(batch_folder, data, solutions, batch_base, methods):
     basenames = list(filter(dropped_dists, os.listdir(data)))
 
     # copy files into cpp_data
-    data_path = lambda f: os.path.join(data, f)
-    data_files = map(data_path, basenames)
+    pathify_data = lambda f: os.path.join(data, f)
+    data_paths = map(pathify_data, basenames)
     to_cpp_data = partial(gunzip_to, cpp_data)
-    list(map(to_cpp_data, data_files))
+    list(map(to_cpp_data, data_paths))
 
     # impute files
-    f = lambda: list(map(call_imp, itertools.product(basenames, methods)))
-    timeit(f, "imputing {} problems".format(len(basenames)))
+    for args in itertools.product(basenames, methods):
+        call_imp(args)
+    # f = lambda: list(map(call_imp, itertools.product(basenames, methods)))
+    # timeit(f, "imputing {} problems".format(len(basenames)))
 
     # delete files in cpp_data
     c_data_path = lambda f: os.path.join(cpp_data, f)
-    data_files = list(map(lambda x: x[:-ext_len], os.listdir(data)))
-    in_data = lambda f: f[:-4] in data_files
+    data_paths = list(map(lambda x: x[:-ext_len], os.listdir(data)))
+    in_data = lambda f: f[:-4] in data_paths
     list(map(os.remove,
              map(c_data_path, 
                  filter(in_data,
