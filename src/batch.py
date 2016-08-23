@@ -41,12 +41,11 @@ from functools import partial
 import itertools
 import os
 import shutil
-import subprocess
 import time
 
 from compile_stats import analyze
 from generateTrees import generateTrees
-from tools import ext, ext_len, gzip_to, gunzip_to, timeit
+from tools import ext, ext_len, gzip_to, gunzip_to, timeit, get_output
 
 def generate(nexus, d, n_gene_trees, n_sp, n_ind, Ne, n_sp_trees):
     
@@ -80,12 +79,12 @@ def drop(batch_folder, nexus, data, n_sp, prob_missing, force):
                 os.remove(out_name+"_true.txt")
 
         # call the R script               
-        subprocess.check_call(["Rscript",
-                               "RandomGenerator.R",
-                               in_name,
-                               "-o", out_name,
-                               "-p{}".format(p_drop),
-                               "-s{}".format(n_sp)])
+        get_output(["Rscript",
+                    "RandomGenerator.R",
+                    in_name,
+                    "-o", out_name,
+                    "-p{}".format(p_drop),
+                    "-s{}".format(n_sp)])
 
         # compress data files
         dest_root = os.path.split(out_name)[0]
@@ -113,7 +112,7 @@ def impute(batch_folder, data, solutions, batch_base, methods):
         nameroot = basename[:-ext_len]
         program = "./missing{}.o".format(method)
         
-        f = lambda: subprocess.check_call([program, nameroot])
+        f = lambda: get_output([program, nameroot])
         timeit(f, "imputing {}".format(nameroot))
 
         namelist = nameroot.split("_")
@@ -127,8 +126,9 @@ def impute(batch_folder, data, solutions, batch_base, methods):
     try:
         os.chdir('cpp')
     except FileNotFoundError as e:
-        print("Please ensure that you call this file from the src " +
+        logging.error("Please ensure that you call this file from the src " +
                "folder, which contains the cpp folder.")
+        logging.exception("FileNotFoundError", exc_info=True)
         raise e
 
     # set up files for optimizer

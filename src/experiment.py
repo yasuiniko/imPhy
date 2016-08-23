@@ -60,11 +60,15 @@ if __name__ == "__main__":
         shutil.rmtree(heatpath)
     os.makedirs(heatpath)
 
+    # set up logger
+    logpath = os.path.join(exp_folder, "output.log")
+    logger = tools.MultiLogger(logpath)
+
     # test run
     if test:
         c = [20]#, 0.7, 0.8, 0.9, 1, 2, 4, 6, 8, 10, 20]
         c = list(map(float, c))
-        genes = [10, 20]#, 40, 50, 60]
+        genes = [3,4,5]#, 40, 50, 60]
         inds = [8]#, 6, 10]
         methods = [1]#, 4]
         probs = [8]#, 0.05, 0.2]
@@ -107,8 +111,13 @@ if __name__ == "__main__":
     batch_iterator = product(depth, genes, inds, pop_size, species, trees)
     
     # choose run method
-    run_parallel= lambda: tools.parmap(batch_run, batch_iterator)
-    run_serial = lambda: list(map(batch_run, batch_iterator))
+    def run_parallel():
+        tools.parmap_log(batch_run, batch_iterator, logger.q_log)
+
+    def run_serial():
+        for batch in batch_iterator:
+            batch_run(batch)
+
     f = run_parallel if parallel else run_serial
 
     # run experiment

@@ -59,11 +59,7 @@ def bhv_dist(trees, batch_folder, rooted):
         gtp = "java^^-jar^^gtp.jar^^-v^^-n^^{}-o^^{}^^{}".format(root_arg,
                                                                  outfile, 
                                                                  infile)
-        try:
-            output = str(subprocess.check_output(gtp.split("^^")), "utf-8")
-        except subprocess.CalledProcessError as e:
-            print(output)
-            raise e
+        output = get_output(gtp.split("^^"), log=False)
 
     finally:
         os.remove(infile)
@@ -292,7 +288,9 @@ def leaf_stats(solution_file, true_file, batch_folder):
     true_list = np.loadtxt(true_file)
 
     if sol_list.size == 0:
-        print("Solution file was empty. Please check for imputation errors.")
+        logging.exception("Solution file was empty. Please check for " +
+                          "imputation errors.",
+                          exc_info=True)
         return []
 
     # get lists of distances
@@ -392,10 +390,11 @@ def match(infile, file_list, tags):
     try:
         assert len(match_files) == 1
     except AssertionError as e:
-        print(infile)
-        print(file_list)
-        print(tags)
-        print(match_files)
+        logging.debug(infile)
+        logging.debug(file_list)
+        logging.debug(tags)
+        logging.debugs(match_files)
+        logging.exception("AssertionError", exc_info=True)
         raise e
 
     return match_files[0]
@@ -533,31 +532,23 @@ def get_row(vect, param_values, exp_folder, rowsize, modifier=""):
             assert len(row) == rowsize
 
     except ValueError as e:
-        print(stats_path)
-        print("Filename: {}".format(filename))
-        print("k: {}".format(k))
+        logging.debug(stats_path)
+        logging.debug("Filename: {}".format(filename))
+        logging.debug("k: {}".format(k))
+        logging.exception("ValueError", exc_info=True)
         raise e
-        
-        row = [float('nan')] * rowsize
-
-        # # code for avoiding lists, but should avoid lists when writing
-        # with open(stats_path, 'r') as f:
-        #     cln = lambda x: x.translate({ord(c): None for c in '[],'})
-        #     data = list(map(cln, f.readline().split()))
-        # if list(filter(lambda x: x.isdigit(), data)):
-        #     row = params + data
-        # else:
-        #     row = [float('nan')] * rowsize
 
     except AssertionError as e:
-        print("Filename: {}".format(filename))
-        print("rowsize: {}, len(row): {}".format(rowsize, len(row)))
-        print("pad_len: {}, k: {}".format(pad_len, k))
-        print("data: {}".format(list(map(len, split_k))))
+        logging.debug("Filename: {}".format(filename))
+        logging.debug("rowsize: {}, len(row): {}".format(rowsize, len(row)))
+        logging.debug("pad_len: {}, k: {}".format(pad_len, k))
+        logging.debug("data: {}".format(list(map(len, split_k))))
+        logging.exception("AssertionError", exc_info=True)
         raise e
 
     except FileNotFoundError as e:
-        print("Please re-run the 'analyze' step in experiment.py.")
+        logging.error("Please re-run the 'analyze' step in experiment.py.")
+        logging.exception("FileNotFoundError", exc_info=True)
         raise e
 
     return row
