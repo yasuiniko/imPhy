@@ -59,7 +59,9 @@ def bhv_dist(trees, batch_folder, rooted):
         gtp = "java^^-jar^^gtp.jar^^-v^^-n^^{}-o^^{}^^{}".format(root_arg,
                                                                  outfile, 
                                                                  infile)
-        output = get_output(gtp.split("^^"), log=False)
+        null_logger = logging.getLogger("null")
+        null_logger.propagate = False
+        output = get_output(gtp.split("^^"), null_logger)
 
     finally:
         os.remove(infile)
@@ -284,13 +286,26 @@ def leaf_stats(solution_file, true_file, batch_folder):
     and actual distance vectors.
     """
     # read file
-    sol_list = np.loadtxt(solution_file)
-    true_list = np.loadtxt(true_file)
+    logger = logging.getLogger("leaf_stats")
+    try:
+        sol_list = np.loadtxt(solution_file)
+        true_list = np.loadtxt(true_file)
 
-    if sol_list.size == 0:
-        logging.exception("Solution file was empty. Please check for " +
-                          "imputation errors.",
-                          exc_info=True)
+        assert sol_list.size != 0
+
+    except AssertionError as e:
+        logger.warning("Solution file was empty. Please check for " +
+                       "imputation errors.")
+        raise e
+
+    except FileNotFoundError as e:
+        if not sol_list:
+            ftype = "Solution File"
+            fname = solution_file
+        else:
+            ftype = "True File"
+            fname = true_file
+        logger.warning("{} file {} is missing".format(ftype, fname))
         return []
 
     # get lists of distances
@@ -309,10 +324,34 @@ def tree_stats(solution_file, true_file, tree_gen, batch_folder):
     """
 
     # read files
-    sol_list = np.loadtxt(solution_file)
-    true_list = np.loadtxt(true_file)
-    sep_file = os.path.join(batch_folder, "nexus/separated.txt")
-    og_sep = [float(np.loadtxt(sep_file))]
+    logger = logging.getLogger("tree_stats")
+    try:
+        sol_list = np.loadtxt(solution_file)
+        true_list = np.loadtxt(true_file)
+        sep_file = os.path.join(batch_folder, "nexus/separated.txt")
+        og_sep = [float(np.loadtxt(sep_file))]
+
+        assert sol_list.size != 0
+
+    except AssertionError as e:
+        logger.warning("Solution file was empty. Please check for " +
+                       "imputation errors.")
+        raise e
+
+    except FileNotFoundError as e:
+        if not sol_list:
+            ftype = "Solution File"
+            fname = solution_file
+        elif not true_list:
+            ftype = "True File"
+            fname = true_file
+        else:
+            ftype = "Well-Separation"
+            fname = sep_file
+
+        logger.warning("{} file {} is missing".format(ftype, fname))
+
+        return []
 
     # get trees
     imp_nj, imp_upgma = tree_gen(sol_list, true_file)
@@ -346,32 +385,34 @@ def tree_stats(solution_file, true_file, tree_gen, batch_folder):
     tree_calc = partial(calc, mode="tree")
     return list(map(tree_calc, tree_dists)) + well_sep, tree_dists_plus
 
-def write_stats(desc, gen_data, tup):
+def write_stats(desc, get_stats, tup):
     """
     Writes data to the relevant file in the stats subdirectory.
 
-    'gen_data' is a data generating function which takes as input an 
-    exploded 'tup'. desc is a description tag for the filenames.
+    'get_stats' is a function which takes as input an exploded 'tup' and
+    returns the stats to write to file. 
+    'desc' is a description tag for the filenames.
     """
 
     solution_file = tup[0]
     batch_folder = tup[-1]
-    data = gen_data(*tup)
+    data = get_stats(*tup)
+
+    assert len(data) == 2
 
     stats = os.path.join(batch_folder, "stats")
     if not os.path.isdir(stats):
         os.makedirs(stats)
 
     basename = os.path.basename(solution_file)[:-ext_len] + desc
-    assert len(data) == 2
 
     # separate and flatten data
     summary, all_data = list(map(check_flatten, data))
-    
+
     # write data
     with gzip.open(os.path.join(stats, basename + '.txt.gz'), 'wt') as f:
         f.write(" ".join(map(str, summary)))
-    with gzip.open(os.path.join(stats, basename + "_all.txt.gz"), 'wt')as f:
+    with gzip.open(os.path.join(stats, basename + "_all.txt.gz"), 'wt') as f:
         f.write(" ".join(map(str, all_data)))
 
 def match(infile, file_list, tags):
@@ -390,11 +431,12 @@ def match(infile, file_list, tags):
     try:
         assert len(match_files) == 1
     except AssertionError as e:
-        logging.debug(infile)
-        logging.debug(file_list)
-        logging.debug(tags)
-        logging.debugs(match_files)
-        logging.exception("AssertionError", exc_info=True)
+        logger = logging.getLogger("match")
+        logger.debug(infile)
+        logger.debug(file_list)
+        logger.debug(tags)
+        logger.debugs(match_files)
+        logger.exception("AssertionError", exc_info=True)
         raise e
 
     return match_files[0]
@@ -504,9 +546,11 @@ def get_row(vect, param_values, exp_folder, rowsize, modifier=""):
                               filename)
 
     # get data
+    logger = logging.getLogger("get_row")
     try:
         # stats_path points to non-tree stats file
         data = list(np.loadtxt(stats_path))
+
         row = params + data 
 
         # data is for tree_all and must be padded depending on the
@@ -532,24 +576,26 @@ def get_row(vect, param_values, exp_folder, rowsize, modifier=""):
             assert len(row) == rowsize
 
     except ValueError as e:
-        logging.debug(stats_path)
-        logging.debug("Filename: {}".format(filename))
-        logging.debug("k: {}".format(k))
-        logging.exception("ValueError", exc_info=True)
+        logger.debug(stats_path)
+        logger.debug("Filename: {}".format(filename))
+        logger.debug("k: {}".format(k))
         raise e
 
     except AssertionError as e:
-        logging.debug("Filename: {}".format(filename))
-        logging.debug("rowsize: {}, len(row): {}".format(rowsize, len(row)))
-        logging.debug("pad_len: {}, k: {}".format(pad_len, k))
-        logging.debug("data: {}".format(list(map(len, split_k))))
-        logging.exception("AssertionError", exc_info=True)
+        logger.debug("Filename: {}".format(filename))
+        logger.debug("rowsize: {}, len(row): {}".format(rowsize, len(row)))
+        logger.debug("pad_len: {}, k: {}".format(pad_len, k))
+        logger.debug("data: {}".format(list(map(len, split_k))))
         raise e
 
     except FileNotFoundError as e:
-        logging.error("Please re-run the 'analyze' step in experiment.py.")
-        logging.exception("FileNotFoundError", exc_info=True)
-        raise e
+        logger.warning("Stats file {} not found. ".format(stats_path) +
+                       "If the corresponding solution file exists, " +
+                       "please run the 'analyze' step again. " +
+                       "Otherwise, double check the imputation step. " +
+                       "This warning indicates possibly biased " +
+                       "missingness in your data.")
+        row = [np.nan] * rowsize
 
     return row
 
@@ -706,9 +752,15 @@ def compile_stats(exp_folder):
 
     # run R plots for descriptive statistics
     summary_graphs = "Rscript_$_summary.R_$_{}".format(exp_folder)
-    subprocess.check_call(summary_graphs.split("_$_"))
+    summary = get_output(summary_graphs.split("_$_"), ignore_error=True)
     outlier_counts = "Rscript_$_outliers.R_$_{}".format(exp_folder)
-    subprocess.check_call(outlier_counts.split("_$_"))
+    outlier = get_output(outlier_counts.split("_$_"), ignore_error=True)
+    if summary == "error":
+        logging.warning("\nError while making summary graphs. This " +
+                        "error does not affect the output csvs.")
+    if outlier == "error":
+        logging.warning("\nError while making outlier graphs. This " +
+                        "error does not affect the output csvs.")
 
 if __name__ == '__main__':
     args = docopt.docopt(__doc__)

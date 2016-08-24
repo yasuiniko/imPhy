@@ -6,7 +6,7 @@ Options:
 
   -c                    Compiles statistics about the experiment after
                         running. Requires matplotlib, pandas, and
-                        seabornself.  
+                        seaborn.  
   -f                    Overwrite files that may already exist within
                         the experiment folder.          [default: False]
   -p                    Parallel mode.                  [default: False]
@@ -76,7 +76,7 @@ if __name__ == "__main__":
         pop_size = [10000]
         depth = list(set(map(lambda x: int(x[0]*x[1]), product(c, pop_size))))
         trees = [1] # number of species trees
-        flow_dict = {"all": True,
+        flow_dict = {"all": False,
                      "generate":False,
                      "drop":False,
                      "impute":False,
@@ -85,15 +85,21 @@ if __name__ == "__main__":
 
     # experimental set up
     if experiment: 
-        c = [1, 4, 8, 12, 16, 20]
-        genes = [10, 20, 30]
-        inds = [8]
-        methods = [1, 2]
-        probs = [4, 8, 16]
-        species = [2, 4, 6, 8]
-        trees = [3] # number of species trees
-        pop_size = [10000]
+        c = [1, 4, 8, 12, 16, 20]  # c ratio
+        genes = [200, 500]         # number of genes
+        inds = [8]                 # number of individuals per species
+        methods = [1, 2]           # imputation methods to use
+        probs = [4, 8, 16]         # leaf dropping probabilities/denominators
+        species = [2, 4, 6, 8]     # number of species 
+        trees = [3]                # number of species trees
+        pop_size = [10000]         # effective population size
+
+        # convert c list from integers to floats
         c = list(map(float, c))
+        # depth (in generations) is equal to c*pop_size, for each 
+        # combination of values of c and pop_size. If you prefer, 
+        # replace the following line with a hard-coded depth list, as 
+        # seen above in the definition for c. 
         depth = list(set(map(lambda x: int(x[0]*x[1]), product(c, pop_size))))
         
         # Options to set 
@@ -112,7 +118,7 @@ if __name__ == "__main__":
     
     # choose run method
     def run_parallel():
-        tools.parmap_log(batch_run, batch_iterator, logger.q_log)
+        tools.parmap(batch_run, batch_iterator)
 
     def run_serial():
         for batch in batch_iterator:
@@ -121,7 +127,7 @@ if __name__ == "__main__":
     f = run_parallel if parallel else run_serial
 
     # run experiment
-    tools.timeit(f, "solving all problems")
+    tools.timeit(f, "solving all problems", logger.getLogger(__name__))
 
     if comp_stats:
         compile_stats(exp_folder)

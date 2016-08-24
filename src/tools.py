@@ -38,13 +38,17 @@ def gzip_to(dest_root, src):
 def to_decimal(x):
     return decimal.Decimal(str(x))
 
-def timeit(f, s):
-    bigs = s[0].upper() + s[1:]
-    smalls = s[0].lower() + s[1:]
-    logging.info("{}...".format(bigs))
+def timeit(f, s, logger=logging.getLogger()):
+    big_s = s[0].upper() + s[1:]
+    small_s = s[0].lower() + s[1:]
+
+    logger.info("{}...".format(big_s))
+
     t = time.time()
     x = f()
-    logging.info("Done {} in {}s.".format(smalls, time.time() - t))
+
+    logger.info("Done {} in {}s.".format(small_s, time.time() - t))
+
     return x
 
 def flatten(*lsts):
@@ -53,43 +57,53 @@ def flatten(*lsts):
 def iterflatten(iterable):
     return itertools.chain.from_iterable(iterable)
 
-def get_output(args, log=True):
+def get_output(cargs, logger=logging.getLogger(), ignore_error=False):
     """
     Calls subprocess.check_output on the args and logs the output.
     """
+
     try:
-        output = str(subprocess.check_output(args), "utf-8")
-        if log: logging.info(output)
+        output = str(subprocess.check_output(cargs), "utf-8")
+        logger.debug(output)
 
     except subprocess.CalledProcessError as e:
-        logging.debug(output)
-        logging.exception("CalledProcessError", exc_info=True)
-        raise e
+        if ignore_error:
+            logger.debug("CalledProcessError when calling {}.".format(cargs))
+            output = "error"
+        else:
+            raise e
 
     return output
 
 class MultiLogger:
     def __init__(self, logpath):
-        self.q_log = multiprocessing.Queue()
+        # self.q_log = multiprocessing.Queue()
 
         root = logging.getLogger()
-        h = logging.FileHandler(logpath)
+        root.setLevel(logging.DEBUG)
+        
+        logfile_h = logging.FileHandler(logpath)
         log_format = '%(asctime)s %(processName)-10s'
         log_format += ' %(name)s %(levelname)-8s %(message)s'
-        h.setFormatter(logging.Formatter(log_format))
-        root.addHandler(h)
-        root.setLevel(logging.DEBUG)
-        root.addHandler(logging.StreamHandler(sys.stdout))
+        logfile_h.setFormatter(logging.Formatter(log_format))
+        root.addHandler(logfile_h)
 
-def parmap_log(f, X, q_log, nprocs=multiprocessing.cpu_count()):
+        std_out_h = logging.StreamHandler(sys.stdout)
+        std_out_h.setLevel(logging.INFO)
+        root.addHandler(std_out_h)
+
+    def getLogger(self, name=""):
+        return logging.getLogger(name)
+
+def parmap(f, X, nprocs=multiprocessing.cpu_count()):
     """
     Code adapted from http://stackoverflow.com/revisions/16071616/9
     """
 
-    def worker(f, q_in, q_out, q_log):
-        h = logging.handlers.QueueHandler(q_log)
+    def worker(f, q_in, q_out):
+        # q_h = logging.handlers.QueueHandler(q_log)
         child_logger = logging.getLogger(__name__)
-        child_logger.addHandler(h)  
+        # child_logger.addHandler(q_h)  
 
         while True:
             i, x = q_in.get()
@@ -101,7 +115,7 @@ def parmap_log(f, X, q_log, nprocs=multiprocessing.cpu_count()):
     q_in = multiprocessing.Queue(1)
     q_out = multiprocessing.Queue()
 
-    worker_args = (f, q_in, q_out, q_log)
+    worker_args = (f, q_in, q_out)
     new_worker = lambda: multiprocessing.Process(target=worker, 
                                                  args=worker_args)
 

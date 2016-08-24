@@ -39,6 +39,7 @@ Options:
 import docopt
 from functools import partial
 import itertools
+import logging
 import os
 import shutil
 import time
@@ -57,7 +58,7 @@ def generate(nexus, d, n_gene_trees, n_sp, n_ind, Ne, n_sp_trees):
                               Ne,
                               n_sp_trees,
                               nexus)
-    timeit(f, "generating trees")
+    timeit(f, "generating trees", logging.getLogger("generate_trees"))
 
 def drop(batch_folder, nexus, data, n_sp, prob_missing, force):
     
@@ -84,7 +85,8 @@ def drop(batch_folder, nexus, data, n_sp, prob_missing, force):
                     in_name,
                     "-o", out_name,
                     "-p{}".format(p_drop),
-                    "-s{}".format(n_sp)])
+                    "-s{}".format(n_sp)],
+                    logging.getLogger("drop"))
 
         # compress data files
         dest_root = os.path.split(out_name)[0]
@@ -97,7 +99,7 @@ def drop(batch_folder, nexus, data, n_sp, prob_missing, force):
 
     # call RandomGenerator.R
     f = lambda: list(map(call_R, itertools.product(prob_missing, basenames)))
-    timeit(f, "dropping leaves")
+    timeit(f, "dropping leaves", logging.getLogger("drop"))
 
 def impute(batch_folder, data, solutions, batch_base, methods):
     """
@@ -112,8 +114,9 @@ def impute(batch_folder, data, solutions, batch_base, methods):
         nameroot = basename[:-ext_len]
         program = "./missing{}.o".format(method)
         
-        f = lambda: get_output([program, nameroot])
-        timeit(f, "imputing {}".format(nameroot))
+        f = lambda: get_output([program, nameroot], 
+                               logging.getLogger("impute"))
+        timeit(f, "imputing {}".format(nameroot), logging.getLogger("impute"))
 
         namelist = nameroot.split("_")
         namelist.insert(-1, "m{}".format(method))
@@ -126,9 +129,9 @@ def impute(batch_folder, data, solutions, batch_base, methods):
     try:
         os.chdir('cpp')
     except FileNotFoundError as e:
-        logging.error("Please ensure that you call this file from the src " +
+        logger = logging.getLogger("impute")
+        logger.error("Please ensure that you call this file from the src " +
                "folder, which contains the cpp folder.")
-        logging.exception("FileNotFoundError", exc_info=True)
         raise e
 
     # set up files for optimizer
@@ -252,9 +255,11 @@ def run_batch(batch_folder,
 
     # get summary stats for each file
     if current_step_is("analyze"):
-        if force or not exists(batch_folder, "stats"):
+        if force or not exists(batch_folder, "stats", m_tags + p_tags):
             f = partial(analyze, batch_folder=batch_folder)
-            timeit(f, "analyzing {}".format(os.path.basename(batch_folder)))
+            timeit(f,
+                   "analyzing {}".format(os.path.basename(batch_folder)),
+                   logging.getLogger("analyze"))
 
 if __name__ == "__main__":
     # get args
