@@ -1,9 +1,10 @@
+
 imPhy
 =
 
 Welcome! imPhy is a small [Python][python] and [R][r] pipeline for simulating, imputing, and analyzing phylogenetic trees. The main purpose of imPhy is to assess the effectiveness of methods imputing the positions of missing leaves in bifurcating trees. Effectiveness is measured by the distance between the original simulated trees and the imputed trees, using Robinson-Foulds and Billera-Holmes-Vogtmann (BHV) distances. Unless only a small number of trees are being imputed, it is recommended to run imPhy on a server.
 
-imPhy has many moving parts and will be developed very slowly, if at all, so this repository is intended as a proof of concept and record for other researchers who would like to implement a similar pipeline.
+imPhy's many moving parts makes it both powerful and buggy. and will be developed very slowly, if at all, so this repository is intended as a proof of concept and record for other researchers who would like to implement a similar pipeline. 
 
 ---
 
@@ -48,7 +49,7 @@ There are 5 main steps in the imPhy pipeline:
 	 > \# imPhy/src/cpp/missing1.o
 	 >methods = [X, 1]
 4. Analysis
-   - In the analysis section, DendroPy is used to take the Robinson-Foulds distance between original trees and their imputed siblings, while Owen and Provost's GTP code is used to calculate the BHV geodesic. Files containing information about these distances are written to `imPhy/my_experiment/batch_A/stats/`. If the next step is impossible to run, these files can still provide interesting information after a bit of file gymnastics. Headers are included in the CSVs.
+   - In the analysis section, DendroPy is used to take the Robinson-Foulds distance between original trees and their imputed siblings, while Owen and Provan's [GTP code][gtp] is used to calculate the BHV geodesic. Files containing information about these distances are written to `imPhy/my_experiment/batch_A/stats/`. If the next step is impossible to run, these files can still provide interesting information after a bit of file gymnastics. Headers are included in the CSVs.
 5. Statistics
    - This section creates CSV files containing information about the distances between imputed and original leaves and trees. It can also create some diagnostic plots in R, and make heatmaps of some small instances, to solidify imputation quality intuition if the [dependencies](#Dependencies) are installed. Files created in this step are located in `imPhy/my_experiment/`.
 
@@ -88,7 +89,8 @@ File Structure
 -
 ```
 imPhy
-│   README
+│   License.md
+│   README.md
 │
 └───my_experiment
 │   │   interleaf_error.csv
@@ -123,6 +125,9 @@ imPhy
 	...
 ```
 
+Acknowledgements
+-
+I'd like to thank [Dr. Yoshida][yoshida] for her leadership and excellent advice, [Dr. Fukumizu][fukumizu] for his sharp insight and for generously hosting me, and [Dr. Vogiatzis][vogiatzis] for his constant support and development of the C++ imputation software. This software would not be possible without their great efforts.
 
 
   [ape]: https://cran.r-project.org/web/packages/ape/index.html "APE"
@@ -133,6 +138,8 @@ imPhy
   [dp]: https://pythonhosted.org/DendroPy/ "DendroPy"
   [docopt_py]: http://docopt.org/ "docopt for Python"
   [docopt_r]: https://github.com/docopt/docopt.R "docopt for R"
+  [fukumizu]: http://www.ism.ac.jp/~fukumizu/ "Dr. Kenji Fukumizu"
+  [gtp]: http://comet.lehman.cuny.edu/owen/code.html "GTP"
   [gurobi]: http://www.gurobi.com/ "Gurobi"
   [java]: https://java.com/en/ "Java"
   [lattice]: https://cran.r-project.org/web/packages/lattice/index.html "lattice"
@@ -143,5 +150,7 @@ imPhy
   [r]: https://www.r-project.org/ "r"
   [reshape2]: https://cran.r-project.org/web/packages/reshape2/index.html "reshape2"
   [sns]: https://stanford.edu/~mwaskom/software/seaborn/ "seaborn"
+  [vogiatzis]: https://www.ndsu.edu/faculty/vogiatzi/ "Dr. Chrysafis Vogiatzis"
+  [yoshida]: https://stat.as.uky.edu/users/rcama2 "Dr. Ruriko Yoshida"
 
 
