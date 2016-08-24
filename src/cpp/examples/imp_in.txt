@@ -1,0 +1,8 @@
+num_species num_leaves
+num_individuals of first species
+...
+num_individuals of last species
+
+d_{1,1} d_{1,2} d_{1,3} ... d_{num_leaves,num_leaves} # first gene tree
+...
+# the rest of the gene trees. Note that comments are not supported.
