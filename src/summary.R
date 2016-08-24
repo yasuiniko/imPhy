@@ -13,7 +13,7 @@ opts <- docopt(doc)
 
 
 
-data <- read.csv(paste0(opts$infolder,"/summary.csv"), header=TRUE)
+data <- read.csv(paste0(opts$infolder,"/interleaf_error.csv"), header=TRUE)
 
 pdf(paste0(opts$infolder, "/interleaf_error.pdf"))
 
@@ -33,7 +33,7 @@ invisible(dev.off())
 
 
 
-data <- read.csv(paste0(opts$infolder,"/tree_summary.csv"), header=TRUE)
+data <- read.csv(paste0(opts$infolder,"/intertree_error.csv"), header=TRUE)
 data.r <- reshape(data, 
                   direction="long",
                   varying=c("rf_nj", "rf_upgma", "bhv_nj", "bhv_upgma"),

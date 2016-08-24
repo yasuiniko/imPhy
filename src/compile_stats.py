@@ -1,4 +1,8 @@
 """
+Contains code for the 'analyze' step, as well as to put all the
+statistics created during 'analyze' into "interleaf_error.csv" and
+"intertree_error.csv" for easy graphing.
+
 Usage: compile_stats.py <exp_folder>
 
 Options:
@@ -681,13 +685,13 @@ def compile_stats(exp_folder):
                                 "_tree_all")
 
     # write stats summary
-    outpath = os.path.join(exp_folder, "summary.csv")
+    outpath = os.path.join(exp_folder, "interleaf_error.csv")
     pd.DataFrame(data, columns=stats_cols).to_csv(outpath)
     # write tree summary
-    outpath = os.path.join(exp_folder, "tree_summary.csv")
+    outpath = os.path.join(exp_folder, "intertree_error.csv")
     pd.DataFrame(tree, columns=tree_cols).to_csv(outpath)
     # write tree all
-    outpath = os.path.join(exp_folder, "tree_all.csv")
+    outpath = os.path.join(exp_folder, "intertree_all.csv")
     pd.DataFrame(tree_all, columns=tree_all_cols).to_csv(outpath)
 
     # write heatmaps
@@ -761,6 +765,10 @@ def compile_stats(exp_folder):
     if outlier == "error":
         logging.warning("\nError while making outlier graphs. This " +
                         "error does not affect the output csvs.")
+        try:
+            os.remove("Rplots.pdf")
+        except FileNotFoundError as e:
+            pass
 
 if __name__ == '__main__':
     args = docopt.docopt(__doc__)

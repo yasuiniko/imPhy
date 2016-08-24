@@ -11,7 +11,7 @@ suppressMessages(library('docopt'))
 library('lattice')
 opts <- docopt(doc)
 
-data <- read.csv(paste0(opts$exp_folder,"/summary.csv"), header=TRUE)
+data <- read.csv(paste0(opts$exp_folder,"/interleaf_error.csv"), header=TRUE)
 
 get_outliers_of <- function(data) { 
     function(field) {

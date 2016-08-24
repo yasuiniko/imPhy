@@ -71,7 +71,8 @@ def get_output(cargs, logger=logging.getLogger(), ignore_error=False):
             logger.debug("CalledProcessError when calling {}.".format(cargs))
             output = "error"
         else:
-            raise e
+            logger.error("CalledProcessError when calling {}.".format(cargs),
+                           exc_info=True)
 
     return output
 
