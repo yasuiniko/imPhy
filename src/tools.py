@@ -1,3 +1,13 @@
+"""
+This file is part of imPhy, a pipeline for evaluating the quality of
+phylogenetic imputation software.
+Copyright © 2016 Niko Yasui, Chrysafis Vogiatzis
+
+imPhy uses GTP, which is Copyright © 2008, 2009  Megan Owen, Scott Provan
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
 import decimal
 from functools import reduce
 import gzip
@@ -64,15 +74,14 @@ def get_output(cargs, logger=logging.getLogger(), ignore_error=False):
 
     try:
         output = str(subprocess.check_output(cargs), "utf-8")
-        logger.debug(output)
+        if output:
+            logger.debug("Output of {}: {}".format(cargs, output))
 
     except subprocess.CalledProcessError as e:
         if ignore_error:
-            logger.debug("CalledProcessError when calling {}.".format(cargs))
             output = "error"
-        else:
-            logger.error("CalledProcessError when calling {}.".format(cargs),
-                           exc_info=True)
+        logger.warning("CalledProcessError when calling {}.".format(cargs),
+                       exc_info=True)
 
     return output
 
@@ -83,10 +92,11 @@ class MultiLogger:
         root = logging.getLogger()
         root.setLevel(logging.DEBUG)
         
-        logfile_h = logging.FileHandler(logpath)
+        logfile_h = logging.FileHandler(logpath, 'w')
         log_format = '%(asctime)s %(processName)-10s'
         log_format += ' %(name)s %(levelname)-8s %(message)s'
         logfile_h.setFormatter(logging.Formatter(log_format))
+        logfile_h.setLevel(logging.DEBUG)
         root.addHandler(logfile_h)
 
         std_out_h = logging.StreamHandler(sys.stdout)
@@ -102,9 +112,7 @@ def parmap(f, X, nprocs=multiprocessing.cpu_count()):
     """
 
     def worker(f, q_in, q_out):
-        # q_h = logging.handlers.QueueHandler(q_log)
         child_logger = logging.getLogger(__name__)
-        # child_logger.addHandler(q_h)  
 
         while True:
             i, x = q_in.get()

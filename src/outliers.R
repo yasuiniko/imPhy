@@ -1,5 +1,15 @@
 
-'Usage: outliers.R <exp_folder>
+'
+This file is part of imPhy, a pipeline for evaluating the quality of
+phylogenetic imputation software.
+Copyright © 2016 Niko Yasui, Chrysafis Vogiatzis
+
+imPhy uses GTP, which is Copyright © 2008, 2009  Megan Owen, Scott Provan
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+Usage: outliers.R <exp_folder>
 
 Options:
   -h, --help            Show this help message.

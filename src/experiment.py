@@ -1,12 +1,20 @@
 """
+This file is part of imPhy, a pipeline for evaluating the quality of
+phylogenetic imputation software.
+Copyright © 2016 Niko Yasui, Chrysafis Vogiatzis
+
+imPhy uses GTP, which is Copyright © 2008, 2009  Megan Owen, Scott Provan
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 Usage: experiment.py <exp_folder> [options]
 
 Options:
   <exp_folder>          Path to destination folder for the sets of data.
 
-  -c                    Compiles statistics about the experiment after
-                        running. Requires matplotlib, pandas, and
-                        seaborn.  
+  -d                    Creates diagnostic plots about the experiment 
+                        after running.                  [default: False]
   -f                    Overwrite files that may already exist within
                         the experiment folder.          [default: False]
   -p                    Parallel mode.                  [default: False]
@@ -20,7 +28,7 @@ import os
 import shutil
 import subprocess
 
-from compile_stats import compile_stats
+from compile_stats import compile_stats, make_plots
 from batch import run_batch
 import tools
 
@@ -45,7 +53,7 @@ if __name__ == "__main__":
 
     # get args
     exp_folder = args['<exp_folder>']
-    comp_stats = args['-c']
+    diag_plots = args['-d']
     force = args['-f']
     parallel = args['-p']
     test, experiment = args['-t'], not args['-t']
@@ -88,7 +96,7 @@ if __name__ == "__main__":
         c = [1, 4, 8, 12, 16, 20]  # c ratio
         genes = [200, 500]         # number of genes
         inds = [8]                 # number of individuals per species
-        methods = [1, 2]           # imputation methods to use
+        methods = [1]              # imputation methods to use
         probs = [4, 8, 16]         # leaf dropping probabilities/denominators
         species = [2, 4, 6, 8]     # number of species 
         trees = [3]                # number of species trees
@@ -103,7 +111,7 @@ if __name__ == "__main__":
         depth = list(set(map(lambda x: int(x[0]*x[1]), product(c, pop_size))))
         
         # Options to set 
-        flow_dict = {"all":False,        # overrides other options
+        flow_dict = {"all":True,        # overrides other options
                      "generate":False,  # generate trees
                      "drop":False,      # drop leaves
                      "impute":False,    # impute missing leaves
@@ -111,6 +119,11 @@ if __name__ == "__main__":
                      "--plus":True}     # perform operations following
                                         # the first selection operation
     
+    # check java installation
+    needs_java = flow_dict["all"] or flow_dict["analyze"]
+    if needs_java:
+        tools.get_output(['java', '-version'])
+
     # batch folder naming scheme
     batch_folder = os.path.join(exp_folder, tools.batch_general)
     batch_run = partial(setup, batch_folder, methods, probs, flow_dict, force)
@@ -128,6 +141,7 @@ if __name__ == "__main__":
 
     # run experiment
     tools.timeit(f, "solving all problems", logger.getLogger(__name__))
+    compile_stats(exp_folder)
 
-    if comp_stats:
-        compile_stats(exp_folder)
+    if diag_plots:
+        make_plots(exp_folder)

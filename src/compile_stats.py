@@ -1,7 +1,13 @@
 """
-Contains code for the 'analyze' step, as well as to put all the
-statistics created during 'analyze' into "interleaf_error.csv" and
-"intertree_error.csv" for easy graphing.
+
+This file is part of imPhy, a pipeline for evaluating the quality of
+phylogenetic imputation software.
+Copyright © 2016 Niko Yasui, Chrysafis Vogiatzis
+
+imPhy uses GTP, which is Copyright © 2008, 2009  Megan Owen, Scott Provan
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 Usage: compile_stats.py <exp_folder>
 
@@ -9,6 +15,11 @@ Options:
   -h, --help            Show this help message.
   <exp_folder>          Folder containing data, nexus, and solutions
                         subfolders.
+
+Description:
+Contains code for the 'analyze' step, as well as to put all the
+statistics created during 'analyze' into "interleaf_error.csv" and
+"intertree_error.csv" for easy graphing.
 """
 
 import dendropy # pip
@@ -34,7 +45,7 @@ pdm = dendropy.calculate.phylogeneticdistance.PhylogeneticDistanceMatrix
 
 def rf_dist(trees):
     """
-    Calculates the Robinson-Foulds distance between two trees.
+    Calculates the normalized Robinson-Foulds distance between two trees.
     """
     assert len(trees) == 2
     dist = dendropy.calculate.treecompare.symmetric_difference(*trees)
@@ -44,8 +55,8 @@ def rf_dist(trees):
 
 def bhv_dist(trees, batch_folder, rooted):
     """
-    Wrapper for Owen and Provan's GTP code to calculate the BHV 
-    distance between two trees.
+    Wrapper for Owen and Provan's GTP code to calculate the normalized 
+    BHV distance between two trees.
     """
 
     # make temporary outfiles for GTP
@@ -94,7 +105,7 @@ def newick(tree):
 
 def codimension(comb_block):
     """
-    find longest subblock in 'combinatorial types' block
+    Find longest subblock in 'combinatorial types' block
     """
     # remove unnecessary characters
     clean = str.maketrans({c:None for c in ";/"})
@@ -200,12 +211,16 @@ def reconstruct_trees(taxa, vectors, true_file):
     exp_folder = os.path.split(batch_folder)[0]
     heatpath = os.path.join(exp_folder, 'heatmaps')
 
-    if (true_name[1:7] == "200000" and 
-        batch_folder[-1] == "2"):
+    if (true_name[1:7] == "200000" and # c ratio is 20
+        batch_folder[-1] == "2"):      # number of species is 2
         for i, vect in enumerate(vectors):
-            if random.random() < 0.01:
+            if random.random() < 0.01: # roughly 1/100 become heatmaps
+                
+                # convert vector to distance matrix
                 upper = vector2upper_tri_matrix(vect)
                 dist = upper + upper.T
+
+                # write distance matrix to heatmaps folder for later plotting
                 plotname = "{}_{}__{}.gz".format(dropped_name[:-ext_len], 
                                               i,
                                               "_".join(taxa.labels()))
@@ -440,7 +455,7 @@ def match(infile, file_list, tags):
         logger.debug(file_list)
         logger.debug(tags)
         logger.debugs(match_files)
-        logger.exception("AssertionError", exc_info=True)
+        logger.exception('')
         raise e
 
     return match_files[0]
@@ -694,6 +709,7 @@ def compile_stats(exp_folder):
     outpath = os.path.join(exp_folder, "intertree_all.csv")
     pd.DataFrame(tree_all, columns=tree_all_cols).to_csv(outpath)
 
+def make_plots(exp_folder):
     # write heatmaps
     sns.set_palette('colorblind')
     heatpath = os.path.join(exp_folder, 'heatmaps')

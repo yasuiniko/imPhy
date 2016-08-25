@@ -1,4 +1,5 @@
 
+
 imPhy
 =
 
@@ -15,13 +16,13 @@ Each file uses docopt, so running the file with `-h` will bring up a help guide 
  2. Install [dependencies](#Dependencies).
  3. Switch directories, using `cd imPhy/src/`. It is safest to run the files from this directory.
  4. Edit `imPhy/src/cpp/Makefile` to match your Gurobi installation and C++ compiler, and run `make`.
- 5. Run a test experiment, with `python3 experiment.py -tc test`. This will fail if you are missing dependencies. If it works, your data will be in `imPhy/test/`.
- 6. Congratulations! You can now run your own experiments by editing the "experimental setup" section in `experiment.py`. A good starting command is `python3 experiment.py -pc my_experiment`.
+ 5. Run a test experiment, with `python3 experiment.py -td test`. This will fail if you are missing dependencies. If it works, your data will be in `imPhy/test/`.
+ 6. Congratulations! You can now run your own experiments by editing the "experimental setup" section in `experiment.py`. A good starting command is `python3 experiment.py -pd my_experiment`.
 
 
 Features
 -
-There are 5 main steps in the imPhy pipeline:
+There are 5 main steps in the imPhy pipeline, which can all by run from the `experiment.py` file. There is also  a 6th step to make diagnostic plots , which requires a functional matplotlib installation to run, so is usually best run on a local machine. 
 
 1. Tree Generation
    - Creates trees with [DendroPy][dp], a very useful phylogenetic library for Python. ImPhy uses the Yule process to create species trees, and the contained coalescent model to create gene trees. Trees are written to `imPhy/my_experiment/batch_A/nexus/`.
@@ -51,7 +52,9 @@ There are 5 main steps in the imPhy pipeline:
 4. Analysis
    - In the analysis section, DendroPy is used to take the Robinson-Foulds distance between original trees and their imputed siblings, while Owen and Provan's [GTP code][gtp] is used to calculate the BHV geodesic. Files containing information about these distances are written to `imPhy/my_experiment/batch_A/stats/`. If the next step is impossible to run, these files can still provide interesting information after a bit of file gymnastics. Headers are included in the CSVs.
 5. Statistics
-   - This section creates CSV files containing information about the distances between imputed and original leaves and trees. It can also create some diagnostic plots in R, and make heatmaps of some small instances, to solidify imputation quality intuition if the [dependencies](#Dependencies) are installed. Files created in this step are located in `imPhy/my_experiment/`.
+   - This section creates CSV files containing information about the distances between imputed and original leaves and trees. Files created in this step are located in `imPhy/my_experiment/`.
+6. Plots
+   - This section can also create some diagnostic plots in R, and make heatmaps of some small instances, to solidify imputation quality intuition if the [dependencies](#Dependencies) are installed. Files created in this step are located in `imPhy/my_experiment/` as well as `imPhy/my_experiment/heatmaps/`.
 
 Other Features:
 
@@ -84,6 +87,10 @@ R Packages:
 Others:
  - [Gurobi][gurobi]
  - [Java][java] (at least SE 1.8.0_31)
+
+Contact
+-
+Feel free to contact me on GitHub via the imPhy repo, at https://github.com/yasuiniko/imPhy. Problems can be reported using the Issues tab. 
 
 File Structure
 -
@@ -152,5 +159,3 @@ I'd like to thank [Dr. Yoshida][yoshida] for her leadership and excellent advice
   [sns]: https://stanford.edu/~mwaskom/software/seaborn/ "seaborn"
   [vogiatzis]: https://www.ndsu.edu/faculty/vogiatzi/ "Dr. Chrysafis Vogiatzis"
   [yoshida]: https://stat.as.uky.edu/users/rcama2 "Dr. Ruriko Yoshida"
-
-

@@ -5,8 +5,19 @@
 
 using namespace std;
 
-// UPDATED at 9.53pm (Central Time) 08/17/2016
+// UPDATED at 9.45pm (Central Time) 08/24/2016
 // Removed true file comparisons
+
+/* 
+This file is part of imPhy, a pipeline for evaluating the quality of
+phylogenetic imputation software.
+Copyright © 2016 Niko Yasui, Chrysafis Vogiatzis
+
+imPhy uses GTP, which is Copyright (C) 2008, 2009  Megan Owen, Scott Provan
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 
 class TreeDistance{
 private:
@@ -156,11 +167,11 @@ int main(int argc, const char * argv[]) {
                             x[t][i][j]=model.addVar(0,eps[translatePosToSpecies(nSpecies, nIndividuals, i)],0,'C',name);
                         }
                     }
-                    else{
-                        char name[10];
-                        sprintf(name, "x(%d,%d,%d)", t, i, j);
-                        x[t][i][j]=model.addVar(TreeDistances.at(t).getDistanceAt(i,j),TreeDistances.at(t).getDistanceAt(i,j),0,'C',name);
-                    }
+                    //                    else{
+                    //                        char name[10];
+                    //                        sprintf(name, "x(%d,%d,%d)", t, i, j);
+                    //                        x[t][i][j]=model.addVar(TreeDistances.at(t).getDistanceAt(i,j),TreeDistances.at(t).getDistanceAt(i,j),0,'C',name);
+                    //                    }
                 }
             }
         }
@@ -176,7 +187,16 @@ int main(int argc, const char * argv[]) {
             for(int t2=t1+1;t2<nGenes;t2++){
                 for(int i=0;i<nLeaves;i++){
                     for(int j=i+1;j<nLeaves;j++){
+                        //cout << t1 << " " << t2 << " " << i << " " << j << endl;
+                        
+                        if(TreeDistances.at(t1).getDistanceAt(i,j)==-1 && TreeDistances.at(t2).getDistanceAt(i,j)==-1)
                             obj+=(x[t1][i][j]-x[t2][i][j])*(x[t1][i][j]-x[t2][i][j]);
+                        else if(TreeDistances.at(t1).getDistanceAt(i,j)==-1 && TreeDistances.at(t2).getDistanceAt(i,j)>=0)
+                            obj+=(x[t1][i][j]-TreeDistances.at(t2).getDistanceAt(i,j))*(x[t1][i][j]-TreeDistances.at(t2).getDistanceAt(i,j));
+                        else if(TreeDistances.at(t2).getDistanceAt(i,j)==-1 && TreeDistances.at(t1).getDistanceAt(i,j)>=0)
+                            obj+=(TreeDistances.at(t1).getDistanceAt(i,j)-x[t2][i][j])*(TreeDistances.at(t1).getDistanceAt(i,j)-x[t2][i][j]);
+                        else
+                            obj+=(TreeDistances.at(t1).getDistanceAt(i,j)-TreeDistances.at(t2).getDistanceAt(i,j))*(TreeDistances.at(t1).getDistanceAt(i,j)-TreeDistances.at(t2).getDistanceAt(i,j));
                     }
                 }
             }
@@ -223,7 +243,10 @@ int main(int argc, const char * argv[]) {
         for(int t=0;t<nGenes;t++){
             for(int i=0;i<nLeaves;i++){
                 for(int j=i+1;j<nLeaves;j++){
-                    f << x[t][i][j].get(GRB_DoubleAttr_X) << "\t";
+                    if(TreeDistances.at(t).getDistanceAt(i,j)==-1)
+                        f << x[t][i][j].get(GRB_DoubleAttr_X) << "\t";
+                    else
+                        f << TreeDistances.at(t).getDistanceAt(i,j) << "\t";
                 }
             }
             f << endl;

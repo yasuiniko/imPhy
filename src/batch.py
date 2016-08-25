@@ -1,4 +1,13 @@
 """
+This file is part of imPhy, a pipeline for evaluating the quality of
+phylogenetic imputation software.
+Copyright © 2016 Niko Yasui, Chrysafis Vogiatzis
+
+imPhy uses GTP, which is Copyright © 2008, 2009  Megan Owen, Scott Provan
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 Usage: batch.py all <batch_folder> <c> [-f] -g=n_gene_trees -i=n_ind -m=method... [-n=Ne] -p=prob... -s=n_sp -t=n_sp_trees
        batch.py generate <batch_folder> <c> [-f -g=n_gene_trees -i=n_ind -m=method... -n=Ne -p=prob... -s=n_sp --plus]
        batch.py drop <batch_folder> <n_sp> [-f -m=method... -p=prob --plus]
@@ -38,6 +47,7 @@ Options:
 
 import docopt
 from functools import partial
+import gc
 import itertools
 import logging
 import os
@@ -110,14 +120,22 @@ def impute(batch_folder, data, solutions, batch_base, methods):
         """
         Calls the cpp imputation software.
         """
+        
+        # set up variables
         basename, method = args
         nameroot = basename[:-ext_len]
         program = "./missing{}.o".format(method)
         
+        # call the imputation software
         f = lambda: get_output([program, nameroot], 
-                               logging.getLogger("impute"))
+                               logging.getLogger("impute"),
+                               ignore_error=True)
         timeit(f, "imputing {}".format(nameroot), logging.getLogger("impute"))
 
+        # garbage collection
+        gc.collect()
+
+        # rename solution file to include the method number
         namelist = nameroot.split("_")
         namelist.insert(-1, "m{}".format(method))
         dest = "_".join(namelist) + ".sol"
@@ -255,6 +273,7 @@ def run_batch(batch_folder,
 
     # get summary stats for each file
     if current_step_is("analyze"):
+
         if force or not exists(batch_folder, "stats", m_tags + p_tags):
             f = partial(analyze, batch_folder=batch_folder)
             timeit(f,
