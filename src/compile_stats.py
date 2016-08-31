@@ -43,6 +43,19 @@ from tools import *
 # DendroPy naming
 pdm = dendropy.calculate.phylogeneticdistance.PhylogeneticDistanceMatrix
 
+def l2_norm(trees):
+    """
+    Calculates the normalized l2 norm between two trees.
+    """
+    vectorize = lambda tree: [edge.length for edge in tree.edges()]
+
+    clean_none = lambda length: length if length else 0
+    clean = lambda vect: np.array(list(map(clean_none, vect)))
+
+    norm = lambda v1, v2: np.linalg.norm(v1 - v2)
+
+    return norm(*list(map(clean, map(vectorize, trees))))
+
 def rf_dist(trees):
     """
     Calculates the normalized Robinson-Foulds distance between two trees.
@@ -58,7 +71,6 @@ def bhv_dist(trees, batch_folder, rooted):
     Wrapper for Owen and Provan's GTP code to calculate the normalized 
     BHV distance between two trees.
     """
-
     # make temporary outfiles for GTP
     (fd, infile) = tempfile.mkstemp()
     outfile = infile + 'out'
@@ -298,7 +310,7 @@ def calc(error, mode="stats", sol_file=""):
 
     return retval
 
-def leaf_stats(solution_file, true_file, batch_folder):
+def leaf_stats(solution_file, true_file, batch_folder, dists=[]):
     """
     Finds quartiles, Root Mean Squared Error (RMSE), and Normalized
     Root Mean Squared Error (NRMSE) using files with solution vectors
@@ -336,7 +348,7 @@ def leaf_stats(solution_file, true_file, batch_folder):
 
     return calc(err, sol_file=solution_file), err
 
-def tree_stats(solution_file, true_file, tree_gen, batch_folder):  
+def tree_stats(solution_file, true_file, tree_gen, batch_folder, dists):  
     """
     Compiles the BHV and Robinson-Foulds distances, the codimension of
     the BHV distance, and the proportion of well-separated trees.
@@ -380,22 +392,32 @@ def tree_stats(solution_file, true_file, tree_gen, batch_folder):
     upgma_trees = list(zip(imp_upgma, og_upgma))
     sep_trees = [imp_nj, imp_upgma, og_nj, og_upgma]
 
-    # turn bhv_dist into a monad
+    # let bhv_r and bhv_u be mapped
     bhv_r = partial(bhv_dist, batch_folder=batch_folder, rooted=True)
     bhv_u = partial(bhv_dist, batch_folder=batch_folder, rooted=False)
 
     # distance calculations
-    bhv_nj, codim_nj = list(zip(*list(map(bhv_u, nj_trees))))
-    bhv_upgma, codim_upgma = list(zip(*list(map(bhv_r, upgma_trees))))
-    rf_nj = list(map(rf_dist, nj_trees))
-    rf_upgma = list(map(rf_dist, upgma_trees))
+    tree_dists = []
+    codim = []
+    if 'bhv' in dists:
+        bhv_nj, codim_nj = list(zip(*list(map(bhv_u, nj_trees))))
+        bhv_upgma, codim_upgma = list(zip(*list(map(bhv_r, upgma_trees))))
+        tree_dists += [bhv_nj, bhv_upgma]
+        codim = [codim_nj, codim_upgma]
+    if 'rf' in dists:
+        rf_nj = list(map(rf_dist, nj_trees))
+        rf_upgma = list(map(rf_dist, upgma_trees))
+        tree_dists += [rf_nj, rf_upgma]
+    if 'norm' in dists:
+        l2_nj = list(map(l2_norm, nj_trees))
+        l2_upgma = list(map(l2_norm, upgma_trees))
+        tree_dists += [l2_nj, l2_upgma]
 
     # proportion of good clades
     well_sep = list(map(prop_separated_trees, sep_trees)) + og_sep
     
     # rearrange 
-    tree_dists = [bhv_nj, bhv_upgma, rf_nj, rf_upgma]
-    tree_dists_plus = [*tree_dists, codim_nj, codim_upgma]
+    tree_dists_plus = tree_dists + codim
 
     # make sure all fields are the same length
     assert all(map(lambda x: len(x) == len(nj_trees), tree_dists_plus))
@@ -404,7 +426,7 @@ def tree_stats(solution_file, true_file, tree_gen, batch_folder):
     tree_calc = partial(calc, mode="tree")
     return list(map(tree_calc, tree_dists)) + well_sep, tree_dists_plus
 
-def write_stats(desc, get_stats, tup):
+def write_stats(desc, get_stats, tup, dists=[]):
     """
     Writes data to the relevant file in the stats subdirectory.
 
@@ -415,7 +437,7 @@ def write_stats(desc, get_stats, tup):
 
     solution_file = tup[0]
     batch_folder = tup[-1]
-    data = get_stats(*tup)
+    data = get_stats(*tup, dists)
 
     assert len(data) == 2
 
@@ -460,7 +482,7 @@ def match(infile, file_list, tags):
 
     return match_files[0]
 
-def analyze(batch_folder):
+def analyze(batch_folder, dists):
     """
     File to write a file in the stats subfolder for each file in the
     solutions file.
@@ -490,7 +512,7 @@ def analyze(batch_folder):
 
     # make functions to create and write stats
     write_leaves = partial(write_stats, '', leaf_stats)
-    write_trees = partial(write_stats, '_tree', tree_stats)
+    write_trees = partial(write_stats, '_tree', tree_stats, dists=dists)
 
     # make tuples to create and write stats 
     stats_files = zip(sol_files, 
@@ -567,7 +589,7 @@ def get_row(vect, param_values, exp_folder, rowsize, modifier=""):
     # get data
     logger = logging.getLogger("get_row")
     try:
-        # stats_path points to non-tree stats file
+        # stats_path points to non-tree_all stats file
         data = list(np.loadtxt(stats_path))
 
         row = params + data 
@@ -575,8 +597,8 @@ def get_row(vect, param_values, exp_folder, rowsize, modifier=""):
         # data is for tree_all and must be padded depending on the
         # number of trees 
         if rowsize != len(row):
-            # split data into num_pieces pieces 
-            num_pieces = 6
+            # split data into num_pieces=len(ex_tree_types) pieces
+            num_pieces = 8
             k = int(len(data)/num_pieces)
 
             split_k = [data[i:i+k] for i in range(0, len(data), k)]
@@ -618,7 +640,7 @@ def get_row(vect, param_values, exp_folder, rowsize, modifier=""):
 
     return row
 
-def compile_stats(exp_folder):
+def compile_stats(exp_folder, dists):
     """
     Creates a csv file with summary statistics from each batch_folder in 
     exp_folder.
@@ -654,17 +676,28 @@ def compile_stats(exp_folder):
     stats_types = ["Abs Imputation Error (AIE) min", 
                    "AIE lower quartile", "AIE median", "AIE upper quartile",
                    "AIE max", "Imputation RMSE", "Imputation NRMSE"]
-    base_tree_types = ["bhv_nj", "rf_nj", "bhv_upgma", "rf_upgma"]
+
+    base_tree_types = []
+    codims = []
+    zr = []
+    if 'bhv' in dists:
+        base_tree_types += ['bhv_nj', 'bhv_upgma']
+        zr += ["zr_bhv_nj", "zr_bhv_upgma"]
+        codims = ["nj_codim", "upgma_codim"]
+    if 'rf' in dists:
+        base_tree_types += ['rf_nj', 'rf_upgma']
+        zr += ["zr_rf_nj", "zr_rf_upgma"]
+    if 'norm' in dists:
+        base_tree_types += ['l2_nj', 'l2_upgma']
+
     tree_types = base_tree_types + ["Proportion Separated Imputed NJ Trees",
                                     "Proportion Separated Imputed UPGMA Trees",
                                     "Proportion Separated Reconstructed NJ Trees",
                                     "Proportion Separated Reconstructed UPGMA Trees",
                                     "Proportion Separated Original Trees"]
-    ex_tree_types = base_tree_types + ["nj_codim", "upgma_codim"]
+    ex_tree_types = base_tree_types + codims
 
     expanded_tree_types = list(iterflatten(map(expand_cols, ex_tree_types)))
-    zr = ["zr_bhv_nj","zr_rf_nj",
-           "zr_bhv_upgma","zr_rf_upgma",]
     tree_all_types = expanded_tree_types + zr
 
     # define columns
@@ -727,6 +760,8 @@ def make_plots(exp_folder):
         outname = os.path.join(heatpath, name)
         ind = name.split("_")[-1]
         _, plot_name = os.path.split(name[:-(len(ind)+1)])
+        valid = lambda name: name[0].isalpha() and name[1].isdigit()
+        supertags = list(filter(valid, os.listdir(exp_folder)))
         b_len = len(supertags[0].split('_'))
         batch_base = "_".join(os.path.split(plot_name)[1].split('_')[:b_len])
         data_name = os.path.join(exp_folder,

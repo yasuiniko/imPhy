@@ -200,7 +200,7 @@ def make_flow(flow_dict):
         # get rid of everything before the first true value
         while not (flow_dict[flow[0]] if flow else True): flow.pop(0)
 
-        # if not --plus, isolate the selected command
+        # if not --plus, isolate the first command
         if not flow_dict['--plus']:
             flow = [flow[0]]
 
@@ -232,6 +232,7 @@ def run_batch(batch_folder,
               prob_missing,
               methods,
               flow_dict,
+              dists,
               force=False):
     # set up folders
     directories = ["data", "nexus", "solutions", "stats"]
@@ -275,8 +276,7 @@ def run_batch(batch_folder,
     if current_step_is("analyze"):
 
         if force or not exists(batch_folder, "stats", m_tags + p_tags):
-            f = partial(analyze, batch_folder=batch_folder)
-            timeit(f,
+            timeit(lambda: analyze(batch_folder, dists),
                    "analyzing {}".format(os.path.basename(batch_folder)),
                    logging.getLogger("analyze"))
 
