@@ -85,7 +85,7 @@ if __name__ == "__main__":
         pop_size = [10000]
         depth = list(set(map(lambda x: int(x[0]*x[1]), product(c, pop_size))))
         trees = [1] # number of species trees
-        dists = ['bhv', 'rf', 'norm']
+        dists = ['norm']
         flow_dict = {"all": True,
                      "generate":False,
                      "drop":False,

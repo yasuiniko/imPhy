@@ -9,12 +9,13 @@ imPhy uses GTP, which is Copyright © 2008, 2009  Megan Owen, Scott Provan
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-Usage: compile_stats.py <exp_folder>
+Usage: compile_stats.py <exp_folder> <dists>...
 
 Options:
   -h, --help            Show this help message.
   <exp_folder>          Folder containing data, nexus, and solutions
                         subfolders.
+  <dists>               Distances calculated.   [default: bhv, rf, norm]
 
 Description:
 Contains code for the 'analyze' step, as well as to put all the
@@ -566,7 +567,7 @@ def values_from_tags(tags):
     # list of lists of values of parameters
     return list(map(values_from_tag, param_tags))
 
-def get_row(vect, param_values, exp_folder, rowsize, modifier=""):
+def get_row(vect, param_values, exp_folder, rowsize, dists, modifier=""):
     """
     Get the row of values to store in the CSV file according to
     vect, a vector describing the values of parameters in the
@@ -598,18 +599,21 @@ def get_row(vect, param_values, exp_folder, rowsize, modifier=""):
         # number of trees 
         if rowsize != len(row):
             # split data into num_pieces=len(ex_tree_types) pieces
-            num_pieces = 8
+            num = {'bhv': 4, 'rf': 2, 'norm': 2}
+            nzr = {'bhv': 2, 'rf': 2, 'norm': 0}
+            num_pieces = sum(num[dist] for dist in dists)
             k = int(len(data)/num_pieces)
+            nzr = sum(nzr[dist] for dist in dists)
 
             split_k = [data[i:i+k] for i in range(0, len(data), k)]
 
             # pad each piece
-            pad_len = int((rowsize - len(params) - len(data) - 4)/num_pieces)
+            pad_len = int((rowsize - len(params) - len(data) - nzr)/num_pieces)
             padded = [q + [float('nan')] * pad_len for q in split_k]
 
             # find zero ratio
-            zero = [len([x for x in q if x == 0]) for q in split_k[:4]]
-            zr = [z/len(total) for z, total in zip(zero, split_k[:4])]
+            zero = [len([x for x in q if x == 0]) for q in split_k[:nzr]]
+            zr = [z/len(total) for z, total in zip(zero, split_k[:nzr])]
             
             # create row
             row = params + list(flatten(*padded)) + zr
@@ -719,32 +723,52 @@ def compile_stats(exp_folder, dists):
         data[ind] = get_row(coordinate,
                             param_values,
                             exp_folder,
-                            len(cols[0]), 
+                            len(cols[0]),
+                            dists, 
                             "")
         tree[ind] = get_row(coordinate, 
                             param_values, 
                             exp_folder,
                             len(cols[1]),
+                            dists,
                             "_tree")
         tree_all[ind] = get_row(coordinate, 
                                 param_values,
                                 exp_folder,
                                 len(cols[2]),
+                                dists,
                                 "_tree_all")
 
-    # write stats summary
-    outpath = os.path.join(exp_folder, "interleaf_error.csv")
-    pd.DataFrame(data, columns=stats_cols).to_csv(outpath)
-    # write tree summary
-    outpath = os.path.join(exp_folder, "intertree_error.csv")
-    pd.DataFrame(tree, columns=tree_cols).to_csv(outpath)
-    # write tree all
-    outpath = os.path.join(exp_folder, "intertree_all.csv")
-    pd.DataFrame(tree_all, columns=tree_all_cols).to_csv(outpath)
+    # make dataframes
+    stats = pd.DataFrame(data, columns=stats_cols)
+    tree = pd.DataFrame(tree, columns=tree_cols)
+    tree_all = pd.DataFrame(tree_all, columns=tree_all_cols)
+    csvs = [stats, tree, tree_all]
+
+    # merge old csv files
+    cnames = ["interleaf_error.csv", 
+              "intertree_error.csv",
+              "intertree_all.csv"]
+    fullnames = list(map(lambda x: os.path.join(exp_folder, x),
+                         cnames))
+    existing = [csv in os.listdir(exp_folder) for csv in cnames]
+    for i, csv in enumerate(fullnames):
+        if not existing[i]: continue
+        old = pd.read_csv(csv)
+        old_cols = list(old.columns.values)
+        new_cols = list(csvs[i].columns.values)
+        dif_cols = ['' if c in new_cols else c for c in old_cols]
+        dif_cols = list(filter(lambda x: bool(x), dif_cols))
+        csvs[i] = pd.concat([csvs[i], old[dif_cols]], axis=1)
+
+    # write csvs
+    write_csv = lambda tup: tup[0].to_csv(tup[1])
+    list(map(write_csv, zip(csvs, fullnames)))
 
 def make_plots(exp_folder):
     # write heatmaps
     sns.set_palette('colorblind')
+    exp_folder = os.path.realpath(exp_folder)
     heatpath = os.path.join(exp_folder, 'heatmaps')
     fig = plt.figure()
 
@@ -824,5 +848,6 @@ def make_plots(exp_folder):
 if __name__ == '__main__':
     args = docopt.docopt(__doc__)
     exp_folder = args['<exp_folder>']
+    dists = args['<dists>']
 
-    compile_stats(exp_folder)
+    compile_stats(exp_folder, dists)
