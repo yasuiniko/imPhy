@@ -30,6 +30,7 @@ import subprocess
 
 from compile_stats import compile_stats, make_plots
 from batch import run_batch
+import settings
 import tools
 
 def setup(batch_folder, methods, probs, flow_dict, dists, force, tup):
@@ -75,55 +76,25 @@ if __name__ == "__main__":
 
     # test run
     if test:
-        c = [1, 10, 20]#, 0.7, 0.8, 0.9, 1, 2, 4, 6, 8, 10, 20]
-        c = list(map(float, c))
-        genes = [3,4,5]#, 40, 50, 60]
-        inds = [8]#, 6, 10]
-        methods = [1]#, 4]
-        probs = [4, 8, 16]#, 0.05, 0.2]
-        species = [2, 4, 6]#, 3, 5]
-        pop_size = [10000]
-        depth = list(set(map(lambda x: int(x[0]*x[1]), product(c, pop_size))))
-        trees = [1] # number of species trees
-        dists = ['norm']
-        flow_dict = {"all": True,
-                     "generate":False,
-                     "drop":False,
-                     "impute":False,
-                     "analyze":False, 
-                     "--plus":True}
-
+        opts = settings.Settings.get_t()
     # experimental set up
-    if experiment: 
-        c = [1, 4, 8, 12, 16, 20]       # c ratio
-        genes = [200, 500]              # number of genes
-        inds = [8]                      # number of individuals per species
-        methods = [1]                   # imputation methods to use
-        probs = [4, 8, 16]              # leaf dropping probabilities/denominators
-        species = [2, 4, 6, 8]          # number of species 
-        trees = [3]                     # number of species trees
-        pop_size = [10000]              # effective population size
-        dists = ['bhv', 'rf', 'norm']   # distances to use
-
-        # convert c list from integers to floats
-        c = list(map(float, c))
-        # depth (in generations) is equal to c*pop_size, for each 
-        # combination of values of c and pop_size. If you prefer, 
-        # replace the following line with a hard-coded depth list, as 
-        # seen above in the definition for c. 
-        depth = list(set(map(lambda x: int(x[0]*x[1]), product(c, pop_size))))
-        
-        # Options to set 
-        flow_dict = {"all":True,        # overrides other options
-                     "generate":False,  # generate trees
-                     "drop":False,      # drop leaves
-                     "impute":False,    # impute missing leaves
-                     "analyze":True,   # analyze batches
-                     "--plus":True}     # perform operations following
-                                        # the first selection operation
+    if experiment:
+        opts = settings.Settings.get_e()
     
+    # unpack opts
+    methods = opts.methods
+    probs = opts.probs
+    flow_dict = opts.flow_dict
+    dists = opts.dists
+    depths = opts.depths
+    genes = opts.genes
+    inds = opts.inds
+    pop_sizes = opts.pop_sizes
+    species = opts.species
+    trees = opts.trees
+
     # check java installation
-    needs_java = flow_dict["all"] or flow_dict["analyze"]
+    needs_java = flow_dict["analyze"]
     if needs_java:
         tools.get_output(['java', '-version'])
 
@@ -131,7 +102,7 @@ if __name__ == "__main__":
     batch_folder = os.path.join(exp_folder, tools.batch_general)
     setup_args = [batch_folder, methods, probs, flow_dict, dists, force]
     batch_run = partial(setup, *setup_args)
-    batch_iterator = product(depth, genes, inds, pop_size, species, trees)
+    batch_iterator = product(depths, genes, inds, pop_sizes, species, trees)
     
     # choose run method
     def run_parallel():

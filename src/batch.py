@@ -8,11 +8,11 @@ imPhy uses GTP, which is Copyright © 2008, 2009  Megan Owen, Scott Provan
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-Usage: batch.py all <batch_folder> <c> [-f] -g=n_gene_trees -i=n_ind -m=method... [-n=Ne] -p=prob... -s=n_sp -t=n_sp_trees
-       batch.py generate <batch_folder> <c> [-f -g=n_gene_trees -i=n_ind -m=method... -n=Ne -p=prob... -s=n_sp --plus]
-       batch.py drop <batch_folder> <n_sp> [-f -m=method... -p=prob --plus]
-       batch.py impute <batch_folder> [-f -m=method... --plus]
-       batch.py analyze <batch_folder> [-f]
+Usage: batch.py all <batch_folder> -d=dists... <c> [-f] -g=n_gene_trees -i=n_ind -m=method... [-n=Ne] -p=prob... -s=n_sp -t=n_sp_trees
+       batch.py generate <batch_folder> -d=dists... <c> [-f -g=n_gene_trees -i=n_ind -m=method... -n=Ne -p=prob... -s=n_sp]
+       batch.py drop <batch_folder> -d=dists... <n_sp> [-f -m=method... -p=prob]
+       batch.py impute <batch_folder> -d=dists... [-f -m=method...]
+       batch.py analyze <batch_folder> -d=dists... [-f]
 
 Options:
   -h, --help            Show this help message.
@@ -20,14 +20,7 @@ Options:
                         existing files.
   <batch_folder>        Path to exp_folder/batch_folder. Will contain
                         all information pertaining to the batch.
-  --plus                Perform all steps following the given step. 
-                        Example: batch.py drop my_batch 5 --plus
-                            1) Drop leaves from trees in
-                               my_batch/nexus/ and put their distance
-                               matrices into my_batch/data/
-                            2) Impute files in my_batch/data/
-                            3) Analyze files in my_batch/solutions to 
-                               create my_batch/stats
+  -d, --dists=.         Distance metrics to use (-d bhv -d norm -d rf)
 
   Tree Generation:
   <d>                   Values of Species depth to consider.
@@ -167,8 +160,6 @@ def impute(batch_folder, data, solutions, batch_base, methods):
     # impute files
     for args in itertools.product(basenames, methods):
         call_imp(args)
-    # f = lambda: list(map(call_imp, itertools.product(basenames, methods)))
-    # timeit(f, "imputing {} problems".format(len(basenames)))
 
     # delete files in cpp_data
     c_data_path = lambda f: os.path.join(cpp_data, f)
@@ -192,17 +183,13 @@ def impute(batch_folder, data, solutions, batch_base, methods):
     os.chdir('..')
 
 def make_flow(flow_dict):
-    flow = ["generate", "drop", "impute", "analyze"]
-
-    # if "all" not selected
-    if not flow_dict["all"]:
-
-        # get rid of everything before the first true value
-        while not (flow_dict[flow[0]] if flow else True): flow.pop(0)
-
-        # if not --plus, isolate the first command
-        if not flow_dict['--plus']:
-            flow = [flow[0]]
+    """
+    Finds the True entries in the flow_dict and returns a function that
+    takes a step name and returns True if that step is True in flow_dict
+    or None otherwise.
+    """
+    steps = ["generate", "drop", "impute", "analyze"]
+    flow = list(filter(lambda step: flow_dict[step], steps))
 
     return lambda s: flow.pop(0) if flow and flow[0] == s else None
 
@@ -296,6 +283,13 @@ if __name__ == "__main__":
     force = args['-f']
     species_depth = c * Ne
 
+    dists = args['--dists']
+
+    flow_dict = {"generate": True if args['all'] or args['generate'] else False,
+                 "drop":True if args['all'] or args['drop'] else False,
+                 "impute":True if args['all'] or args['impute'] else False,
+                 "analyze":True if args['all'] or args['analyze'] else False}
+    
     run_batch(batch_folder,
               species_depth,
               n_gene_trees,
@@ -305,5 +299,6 @@ if __name__ == "__main__":
               Ne,
               prob_missing,
               methods,
-              args,
+              flow_dict,
+              dists,
               force)

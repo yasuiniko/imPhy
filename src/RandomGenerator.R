@@ -39,7 +39,7 @@ Options:
 Either reads a .nex file, or creates num_genes trees and randomly 
 removes their leaves with probability p.' -> doc
 
-library('docopt')
+suppressMessages(library('docopt'))
 library('ape')
 source('tools.R')
 
