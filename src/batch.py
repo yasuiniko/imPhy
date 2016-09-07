@@ -45,6 +45,7 @@ import itertools
 import logging
 import os
 import shutil
+from subprocess import Popen, PIPE, CalledProcessError
 import time
 
 from compile_stats import analyze
@@ -120,10 +121,32 @@ def impute(batch_folder, data, solutions, batch_base, methods):
         program = "./missing{}.o".format(method)
         
         # call the imputation software
-        f = lambda: get_output([program, nameroot], 
-                               logging.getLogger("impute"),
-                               ignore_error=True)
-        timeit(f, "imputing {}".format(nameroot), logging.getLogger("impute"))
+        
+        def imp_wrapper():
+            """
+            Wraps the imputation software call in a try/catch to
+            continue imputing other files in the batch if some calls 
+            fail.
+            """
+            logger = logging.getLogger("impute")
+            try:
+                p = Popen([program, nameroot], 
+                                     stdout=PIPE,
+                                     stderr=PIPE)
+                output, err = p.communicate()
+                
+                if output:
+                    logger.debug("Output of {}: {}".format([program, nameroot],
+                                                           output))
+
+            except CalledProcessError:
+                p.terminate()
+                logger.error("Imputation error for basename '{}'".format(args[0]) + 
+                         " using method '{}'.".format(args[1]))
+
+        timeit(imp_wrapper,
+               "imputing {}".format(nameroot),
+               logging.getLogger("impute"))
 
         # garbage collection
         gc.collect()

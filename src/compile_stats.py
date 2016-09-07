@@ -340,6 +340,12 @@ def leaf_stats(solution_file, true_file, batch_folder, dists=[]):
         logger.warning("{} file {} is missing".format(ftype, fname))
         return []
 
+    except OSError as e:
+        logger.critical("Could not open either " +
+                        "'{}' or '{}'".format(solution_file, true_file) + 
+                        ". Please double check the integrity of these files.")
+        return []
+
     # get lists of distances
     imp_dists = list(iterflatten(map(vector2list, sol_list)))
     og_dists = list(iterflatten(map(vector2list, true_list)))
