@@ -116,7 +116,9 @@ if __name__ == "__main__":
 
     # run experiment
     tools.timeit(f, "solving all problems", logger.getLogger(__name__))
-    compile_stats(exp_folder, dists)
+    
+    if opts.flow_dict['analyze'] or diag_plots:
+        compile_stats(exp_folder, dists)
 
     if diag_plots:
         make_plots(exp_folder)
