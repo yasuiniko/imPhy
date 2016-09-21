@@ -132,8 +132,11 @@ def check_flatten(x):
     """
     Flatten if it's a list of lists or tuples.
     """
-    if x and type(x[0]) == list or type(x[0]) == tuple:
+    try:
         x = list(flatten(*x))
+    except:
+        pass
+
     return x
 
 def vector2upper_tri_matrix(v):

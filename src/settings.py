@@ -13,15 +13,15 @@ class Settings:
     t_species = [2, 4, 6]             # number of species 
     t_trees = [3]                     # number of species trees
     t_pop_sizes = [10000]             # effective population size
-    t_dists = ['norm']                # distances to use
+    t_dists = ['bhv', 'rf', 'norm']   # distances to use
 
     t_c = list(map(float, t_c))
     t_depths = list(set(map(lambda x: int(x[0]*x[1]), product(t_c,
                                                               t_pop_sizes))))
-    t_flow_dict = {"generate":False,  # generate trees
-                   "drop":True,      # drop leaves
-                   "impute":False,    # impute missing leaves
-                   "analyze":False}    # analyze batches
+    t_flow_dict = {"generate":True,   # generate trees
+                   "drop":True,       # drop leaves
+                   "impute":True,     # impute missing leaves
+                   "analyze":True}    # analyze batches
 
     """
     Experiment variables.
