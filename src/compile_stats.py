@@ -604,9 +604,11 @@ def get_row(vect, param_values, exp_folder, rowsize, dists, modifier=""):
 
         row = params + data 
 
+        if not data:
+            row = [np.nan] * rowsize
         # data is for tree_all and must be padded depending on the
         # number of trees 
-        if rowsize != len(row):
+        elif rowsize != len(row):
             # split data into num_pieces=len(ex_tree_types) pieces
             num = {'bhv': 4, 'rf': 2, 'norm': 2}
             nzr = {'bhv': 2, 'rf': 2, 'norm': 0}
