@@ -606,13 +606,17 @@ def get_row(vect, param_values, exp_folder, rowsize, dists, modifier=""):
 
         if not data:
             row = [np.nan] * rowsize
+
         # data is for tree_all and must be padded depending on the
         # number of trees 
         elif rowsize != len(row):
-            # split data into num_pieces=len(ex_tree_types) pieces
+            # split data into num_pieces pieces
             num = {'bhv': 4, 'rf': 2, 'norm': 2}
             nzr = {'bhv': 2, 'rf': 2, 'norm': 0}
             num_pieces = sum(num[dist] for dist in dists)
+
+            assert len(data) % num_pieces == 0
+
             k = int(len(data)/num_pieces)
             nzr = sum(nzr[dist] for dist in dists)
 
@@ -629,8 +633,6 @@ def get_row(vect, param_values, exp_folder, rowsize, dists, modifier=""):
             # create row
             row = params + list(flatten(*padded)) + zr
 
-            assert len(row) == rowsize
-
     except ValueError as e:
         logger.debug(stats_path)
         logger.debug("Filename: {}".format(filename))
@@ -640,9 +642,8 @@ def get_row(vect, param_values, exp_folder, rowsize, dists, modifier=""):
     except AssertionError as e:
         logger.debug("Filename: {}".format(filename))
         logger.debug("rowsize: {}, len(row): {}".format(rowsize, len(row)))
-        logger.debug("pad_len: {}, k: {}".format(pad_len, k))
-        logger.debug("data: {}".format(list(map(len, split_k))))
-        raise e
+        logger.critical("Row has incorrect number of data points, skipping.")
+        row = [np.nan] * rowsize
 
     except FileNotFoundError as e:
         logger.warning("Stats file {} not found. ".format(stats_path) +
@@ -652,6 +653,16 @@ def get_row(vect, param_values, exp_folder, rowsize, dists, modifier=""):
                        "This warning indicates possibly biased " +
                        "missingness in your data.")
         row = [np.nan] * rowsize
+
+    try:
+        assert len(row) == rowsize
+
+    except AssertionError as e:
+        logger.debug("Filename: {}".format(filename))
+        logger.debug("rowsize: {}, len(row): {}".format(rowsize, len(row)))
+        logger.debug("pad_len: {}, k: {}".format(pad_len, k))
+        logger.debug("data: {}".format(list(map(len, split_k))))
+        raise e
 
     return row
 
@@ -860,5 +871,8 @@ if __name__ == '__main__':
     args = docopt.docopt(__doc__)
     exp_folder = args['<exp_folder>']
     dists = args['<dists>']
+
+    logpath = os.path.join(exp_folder, "output_compile_stats.log")
+    logger = MultiLogger(logpath)
 
     compile_stats(exp_folder, dists)
