@@ -838,12 +838,12 @@ def make_plots(exp_folder):
 
         # dropped heatmap
         sns.heatmap(dhm)
-        fig.savefig(outname + "_dropped")
+        fig.savefig(outname + "_dropped.png")
         fig.clear()
 
         # imputed heatmap
         sns.heatmap(ihm, vmin=-dmax)
-        fig.savefig(outname + "_imputed")
+        fig.savefig(outname + "_imputed.png")
         fig.clear()
 
         # remove heatmap data file
