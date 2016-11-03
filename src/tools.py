@@ -82,6 +82,7 @@ def get_output(cargs, logger=logging.getLogger(), ignore_error=False):
             output = "error"
         logger.warning("CalledProcessError when calling {}.".format(cargs),
                        exc_info=True)
+        output = ""
 
     return output
 
