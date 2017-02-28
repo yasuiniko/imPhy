@@ -5,13 +5,13 @@ class Settings:
     """
     Testing variables.
     """
-    t_c = [1, 10, 20]                 # c ratio
-    t_genes = [3,4,5]                 # number of genes
+    t_c = [1]                         # c ratio
+    t_genes = [3]                     # number of genes
     t_inds = [8]                      # number of individuals per species
     t_methods = [1]                   # imputation methods to use
-    t_probs = [4, 8, 16]              # leaf dropping probabilities/denominators
-    t_species = [2, 4, 6]             # number of species 
-    t_trees = [3]                     # number of species trees
+    t_probs = [4]                    # leaf dropping probabilities/denominators
+    t_species = [4]                   # number of species 
+    t_trees = [1]                     # number of species trees
     t_pop_sizes = [10000]             # effective population size
     t_dists = ['bhv', 'rf', 'norm']   # distances to use
 
@@ -26,15 +26,15 @@ class Settings:
     """
     Experiment variables.
     """
-    e_c = [1, 4, 8, 12, 16, 20]       # c ratio
-    e_genes = [10, 20, 30, 200, 500]  # number of genes
-    e_inds = [8]                      # number of individuals per species
+    e_c = [0]                         # c ratio
+    e_genes = [4524]                  # number of genes
+    e_inds = [27]                     # number of individuals per species
     e_methods = [1]                   # imputation methods to use
     e_probs = [4, 8, 16]              # leaf dropping probabilities/denominators
-    e_species = [2, 4, 6, 8]          # number of species 
-    e_trees = [3]                     # number of species trees
-    e_pop_sizes = [10000]              # effective population size
-    e_dists = ['norm']   # distances to use
+    e_species = [6]                   # number of species 
+    e_trees = [1]                     # number of species trees
+    e_pop_sizes = [0]                 # effective population size
+    e_dists = ['bhv', 'rh', 'norm']   # distances to use
 
     # convert c list from integers to floats
     e_c = list(map(float, e_c))
@@ -47,8 +47,8 @@ class Settings:
 
     # Options to set 
     e_flow_dict = {"generate":False,  # generate trees
-                 "drop":False,      # drop leaves
-                 "impute":False,    # impute missing leaves
+                 "drop":True,      # drop leaves
+                 "impute":True,    # impute missing leaves
                  "analyze":True}    # analyze batches
 
     def __init__(self,

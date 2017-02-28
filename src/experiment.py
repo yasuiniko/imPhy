@@ -74,10 +74,10 @@ if __name__ == "__main__":
     logpath = os.path.join(exp_folder, "output.log")
     logger = tools.MultiLogger(logpath)
 
-    # test run
+    # test run setup
     if test:
         opts = settings.Settings.get_t()
-    # experimental set up
+    # experimental setup
     if experiment:
         opts = settings.Settings.get_e()
     

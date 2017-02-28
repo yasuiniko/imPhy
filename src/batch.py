@@ -171,12 +171,12 @@ def impute(batch_folder, data, solutions, batch_base, methods):
     # set up files for optimizer
     cpp_data = os.path.abspath('data')
     cpp_sol = os.path.abspath('sol')
-    dropped_dists = lambda fname: '_true.' not in fname
+    dropped_dists = lambda fname: '_true.' not in fname and "txt.gz" in fname
     basenames = list(filter(dropped_dists, os.listdir(data)))
 
     # copy files into cpp_data
-    pathify_data = lambda f: os.path.join(data, f)
-    data_paths = map(pathify_data, basenames)
+    add_data_path = lambda f: os.path.join(data, f)
+    data_paths = map(add_data_path, basenames)
     to_cpp_data = partial(gunzip_to, cpp_data)
     list(map(to_cpp_data, data_paths))
 

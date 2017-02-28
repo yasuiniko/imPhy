@@ -115,7 +115,7 @@ def generateTrees(d_list,
 
     prop_separated = []
 
-    # d_list usually contains one species depth
+    # d_list usually contains only one element
     for sp_depth in d_list:
 
         sp, gn = gen_trees(n_sp_trees, n_gene_trees, n_sp, n_ind, sp_depth, Ne)

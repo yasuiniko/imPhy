@@ -22,7 +22,6 @@ Options:
                                     trees.               [default: NULL]
 
  <individuals>                      Number of individuals per species.
-                                                            [default: 4]
 
  -o <outfile>, --outfile <outfile>  Root of filepath of outfile.
                                     (script will output outfile.txt and
@@ -98,11 +97,19 @@ if (!is.null(opts$infile)) {
 
     n_species <- as.numeric(opts$species)
     n_genes <- length(trees)
-    n_leaves <- length(trees[[1]]$tip.label)
-    n_individuals <- replicate(n_species, n_leaves / n_species)
+
+    leaves <- trees[[1]]$tip.label
+    n_leaves <- length(leaves)
+    if (length(opts$individuals) == 0) {
+        get_species <- function (x) substring(x, 1, 1)
+        count_inds <- function(lvs) table(sapply(lvs, get_species))
+        n_individuals <- count_inds(leaves)
+    } else {
+        n_individuals <- replicate(n_species, n_leaves / n_species)
+    }
 
     # V1 is species, V2...Vn is individuals. NA means no individual in that slot.
-    si_link <- read.csv(opts$infile, header=FALSE, nrows=n_species)
+    # si_link <- read.csv(opts$infile, header=FALSE, nrows=n_species)
 
 } else {
     n_species <- length(opts$individuals)
