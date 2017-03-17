@@ -78,7 +78,7 @@ def gen_trees(n_sp_trees, n_gene_trees, n_sp, n_ind, sp_depth, Ne):
     # make taxa for species. names are "A", "B", "C", ...
     species = dp.TaxonNamespace(string.ascii_uppercase[:n_sp])
 
-    # generate species trees and set population size of each edge to 10000
+    # generate species trees and set population size of each edge to Ne
     # must explicitly make list, or cannot set pop_size
     sp_trees = dp.TreeList(map(lambda x: species_tree(species, sp_depth),
                                range(n_sp_trees)),

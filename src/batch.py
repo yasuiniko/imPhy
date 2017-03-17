@@ -144,6 +144,10 @@ def impute(batch_folder, data, solutions, batch_base, methods):
                 logger.error("Imputation error for basename '{}'".format(args[0]) + 
                          " using method '{}'.".format(args[1]))
 
+            except OSError as e:
+                logger.error("OSError while imputing {}".format(nameroot))
+                raise e
+
         timeit(imp_wrapper,
                "imputing {}".format(nameroot),
                logging.getLogger("impute"))
@@ -157,7 +161,13 @@ def impute(batch_folder, data, solutions, batch_base, methods):
         dest = "_".join(namelist) + ".sol"
         src = nameroot + ".sol"
         cpp_sol = os.path.abspath('sol')
-        os.rename(os.path.join(cpp_sol, src), os.path.join(cpp_sol, dest))
+
+        logger = logging.getLogger("impute")
+        try:
+            os.rename(os.path.join(cpp_sol, src), os.path.join(cpp_sol, dest))
+            logger.debug("Successfully renamed solution file for basename '{}' and method '{}'".format(*args))
+        except FileNotFoundError as e:
+            raise e
 
     # set up
     try:
@@ -181,7 +191,9 @@ def impute(batch_folder, data, solutions, batch_base, methods):
     list(map(to_cpp_data, data_paths))
 
     # impute files
+    logger = logging.getLogger("impute")
     for args in itertools.product(basenames, methods):
+        logger.debug("Imputing {} with method {}".format(*args))
         call_imp(args)
 
     # delete files in cpp_data
