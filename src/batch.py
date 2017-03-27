@@ -167,8 +167,8 @@ def impute(batch_folder, data, solutions, batch_base, methods):
             os.rename(os.path.join(cpp_sol, src), os.path.join(cpp_sol, dest))
             logger.debug("Successfully renamed solution file for basename '{}' and method '{}'".format(*args))
         except FileNotFoundError as e:
+            logger.error("Failed to impute solution file for basename '{}' and method '{}'".format(*args))
             open(os.path.join(cpp_sol, dest), 'a').close()
-            raise e
 
     # set up
     try:
