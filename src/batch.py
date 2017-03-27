@@ -162,13 +162,36 @@ def impute(batch_folder, data, solutions, batch_base, methods):
         src = nameroot + ".sol"
         cpp_sol = os.path.abspath('sol')
 
+        imputed = os.path.join(cpp_sol, src)
+        imputed_with_method = os.path.join(cpp_sol, dest)
+
         logger = logging.getLogger("impute")
+        logger.debug("Checking existence of imputed file:")
+        if os.path.isfile(imputed):
+            logger.debug("Imputed file {} exists.".format(imputed))
+        else:
+            logger.debug("Failed to find imputed file {}.".format(imputed))
+
+        logger.debug("Checking existence of imputed file with method name:")
+        if os.path.isfile(imputed_with_method):
+            logger.debug("Imputed file with method name {} exists.".format(imputed))
+        else:
+            logger.debug("Failed to find imputed file with method name {}.".format(imputed))
+
         try:
-            os.rename(os.path.join(cpp_sol, src), os.path.join(cpp_sol, dest))
-            logger.debug("Successfully renamed solution file for basename '{}' and method '{}'".format(*args))
+            logger.debug("Attempting to move file with os.rename():")
+            os.rename(imputed, imputed_with_method)
+            logger.debug("Successfully renamed solution file for basename '{}' and method '{}' with os.rename().".format(*args))
         except FileNotFoundError as e:
-            logger.error("Failed to impute solution file for basename '{}' and method '{}'".format(*args))
-            open(os.path.join(cpp_sol, dest), 'a').close()
+            logger.error("Failed to impute solution file for basename '{}' and method '{}' with os.rename().".format(*args))
+        try: 
+            logger.debug("Attempting to move file with shutil.move():")
+            shutil.move(imputed, imputed_with_method)
+            logger.debug("Successfully renamed solution file for basename '{}' and method '{}' with shutil.move().".format(*args))
+        except FileNotFoundError as e: 
+            logger.error("Failed to impute solution file for basename '{}' and method '{}' with shutil.move().".format(*args))
+
+        open(imputed_with_method, 'a').close()
 
     # set up
     try:
