@@ -302,7 +302,7 @@ def calc(error, mode="stats", sol_file=""):
         # calculate normalized error
         species_depth = int(param_value(sol_file, 'd'))
         theoretical_max = 2 * species_depth 
-        nrmse = rmse / theoretical_max
+        nrmse = rmse / theoretical_max if theoretical_max else rmse
 
         # calculate percentiles
         p = percentiles_of(imp_err)
