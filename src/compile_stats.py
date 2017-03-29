@@ -249,32 +249,6 @@ def reconstruct_trees(taxa, vectors, true_file):
 
     return nj_trees, upgma_trees
 
-def percentiles_of(x):
-    """
-    Returns a precentile function for list x. 
-    """
-    x = sorted(x)
-    n = len(x)
-    
-    def percentile(p):
-        """
-        Calculates the pth percentile of x.
-        """
-        p = p/100
-        if 0<=p<=1/(n+1):
-            index = 0
-        elif 1/(n+1) < p < n/(n+1):
-            index = p*(n+1) - 1
-        else:
-            index = n - 1
-
-        ind = math.floor(index)
-        index = to_decimal(index)
-
-        return x[ind] + index%1 * (x[ind+1] - x[ind]) if index % 1 else x[ind]
-
-    return percentile
-
 def param_value(s, tag):
     """
     Finds the value of the parameter specified by 'tag' in 's'.
@@ -288,10 +262,11 @@ def param_value(s, tag):
 
 def calc(error, mode="stats", sol_file=""):
     # calculations
-    sq_err = list(map(lambda x: to_decimal(x)**2, error))
-    imp_sq_err = list(filter(lambda x: x != 0, sq_err))
-    imp_err = list(map(lambda x: x.sqrt(), imp_sq_err))
-    sse = to_decimal(sum(imp_sq_err))
+    sq_err = np.power(error, 2)
+    imp_sq_err = sq_err[sq_err != 0]
+    imp_err = np.power(imp_sq_err, 1/2)
+    imp_err = np.array([3,4,5])
+    sse = imp_sq_err.sum()
     n = len(imp_sq_err) if mode == "stats" else len(sq_err)
     mse = sse/n if n else 0
     rmse = math.sqrt(mse)
@@ -305,7 +280,7 @@ def calc(error, mode="stats", sol_file=""):
         nrmse = rmse / theoretical_max if theoretical_max else rmse
 
         # calculate percentiles
-        p = percentiles_of(imp_err)
+        p = lambda q: np.percentile(imp_err, 0)
 
         retval = [p(0), p(25), p(50), p(75), p(100), rmse, nrmse]
 
@@ -334,7 +309,7 @@ def leaf_stats(solution_file, true_file, batch_folder, dists=[]):
         raise e
 
     except FileNotFoundError as e:
-        if not sol_list:
+        if sol_list == None or len(sol_list) == 0:
             ftype = "Solution File"
             fname = solution_file
         else:
@@ -350,11 +325,11 @@ def leaf_stats(solution_file, true_file, batch_folder, dists=[]):
         return []
 
     # get lists of distances
-    imp_dists = list(iterflatten(map(vector2list, sol_list)))
-    og_dists = list(iterflatten(map(vector2list, true_list)))
+    imp_dists = np.array(list(map(vector2list, sol_list))).flatten()
+    og_dists = np.array(list(map(vector2list, sol_list))).flatten()
 
     # calculations
-    err = list(map(lambda x: x[0] - x[1], zip(imp_dists, og_dists)))
+    err = imp_dists - og_dists
 
     return calc(err, sol_file=solution_file), err
 
@@ -368,31 +343,29 @@ def tree_stats(solution_file, true_file, tree_gen, batch_folder, dists):
     logger = logging.getLogger("tree_stats")
     try:
         sol_list = np.loadtxt(solution_file)
+    except FileNotFoundError as e:
+        logger.warning("Solution file {} is missing.".format(solution_file))
+        raise e
+
+    try:
         true_list = np.loadtxt(true_file)
+    except FileNotFoundError as e:
+        logger.warning("True file {} is missing.".format(true_file))
+        raise e
+
+    try:
         sep_file = os.path.join(batch_folder, "nexus/separated.txt")
         og_sep = [float(np.loadtxt(sep_file))]
+    except FileNotFoundError as e:
+        logger.warning("Separation file {} is missing.".format(sep_file))
+        raise e
 
+    try:
         assert sol_list.size != 0
-
     except AssertionError as e:
         logger.warning("Solution file was empty. Please check for " +
                        "imputation errors.")
         raise e
-
-    except FileNotFoundError as e:
-        if not sol_list:
-            ftype = "Solution File"
-            fname = solution_file
-        elif not true_list:
-            ftype = "True File"
-            fname = true_file
-        else:
-            ftype = "Well-Separation"
-            fname = sep_file
-
-        logger.warning("{} file {} is missing".format(ftype, fname))
-
-        return []
 
     # get trees
     imp_nj, imp_upgma = tree_gen(sol_list, true_file)
@@ -449,7 +422,13 @@ def write_stats(desc, get_stats, tup, dists=[]):
     batch_folder = tup[-1]
     data = get_stats(*tup, dists)
 
-    assert len(data) == 2
+    try:
+        assert len(data) == 2
+    except AssertionError as e:
+        logger = logging.getLogger("write_stats")
+        logger.debug('Length of data is {}, not 2. data: {}'.format(len(data), data))
+        logger.error(e)
+        raise e 
 
     stats = os.path.join(batch_folder, "stats")
     if not os.path.isdir(stats):
@@ -486,7 +465,7 @@ def match(infile, file_list, tags):
         logger.debug(infile)
         logger.debug(file_list)
         logger.debug(tags)
-        logger.debugs(match_files)
+        logger.debug(match_files)
         logger.exception('')
         raise e
 
