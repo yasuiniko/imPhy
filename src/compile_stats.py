@@ -101,7 +101,7 @@ def bhv_dist(trees, batch_folder, rooted):
             if "Combinatorial type" in line:
                 codim = codimension(line.split()[-1])
             if "Geodesic distance between start and target tree is" in line:
-                distance = to_decimal(line.split()[-1])
+                distance = float(line.split()[-1])
 
     # remove outfile
     os.remove(outfile)
@@ -153,13 +153,13 @@ def vector2list(v):
     """
     Converts the vectorized form of a distance matrix (in the form of 
     a numpy array) to a flattened distance matrix (in the form of a
-    list) filled with Decimals. 
+    list) filled with floats. 
     """
 
     m = vector2upper_tri_matrix(v)
 
-    # fill lower triangle, convert to list, convert elements to Decimal
-    return list(map(lambda x: to_decimal(x), (m + m.T).flatten()))
+    # fill lower triangle, convert to list, convert elements to float
+    return list(np.asarray((m + m.T).flatten(), float))
 
 def make_taxa(nexus_file):
     taxa = []
@@ -262,12 +262,11 @@ def param_value(s, tag):
 
 def calc(error, mode="stats", sol_file=""):
     # calculations
-    sq_err = np.power(error, 2)
-    imp_sq_err = sq_err[sq_err != 0]
-    imp_err = np.power(imp_sq_err, 1/2)
-    imp_err = np.array([3,4,5])
-    sse = imp_sq_err.sum()
-    n = len(imp_sq_err) if mode == "stats" else len(sq_err)
+    error = np.asarray(error)
+    imp_err = error[error != 0]
+    imp_sq_err = np.power(error, 2)
+    sse = np.sum(imp_sq_err)
+    n = len(imp_sq_err) if mode == "stats" else len(imp_err)
     mse = sse/n if n else 0
     rmse = math.sqrt(mse)
 
@@ -280,7 +279,7 @@ def calc(error, mode="stats", sol_file=""):
         nrmse = rmse / theoretical_max if theoretical_max else rmse
 
         # calculate percentiles
-        p = lambda q: np.percentile(imp_err, 0)
+        p = lambda q: np.percentile(imp_err, 0) if len(imp_err) else 0
 
         retval = [p(0), p(25), p(50), p(75), p(100), rmse, nrmse]
 
@@ -326,10 +325,13 @@ def leaf_stats(solution_file, true_file, batch_folder, dists=[]):
 
     # get lists of distances
     imp_dists = np.array(list(map(vector2list, sol_list))).flatten()
-    og_dists = np.array(list(map(vector2list, sol_list))).flatten()
+    og_dists = np.array(list(map(vector2list, true_list))).flatten()
 
     # calculations
     err = imp_dists - og_dists
+    print((err == 0).all())
+    print(solution_file)
+    print(true_file)
 
     return calc(err, sol_file=solution_file), err
 
