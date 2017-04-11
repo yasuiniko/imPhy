@@ -276,7 +276,12 @@ def calc(error, mode="stats", sol_file=""):
         # calculate normalized error
         species_depth = int(param_value(sol_file, 'd'))
         theoretical_max = 2 * species_depth 
-        nrmse = rmse / theoretical_max if theoretical_max else rmse
+        if not theoretical_max:
+            logger = logging.getLogger("normalization")
+            logger.warning("Since species depth is 0, 'Normalized RMSE' and 'RMSE' will be the same.")
+            nrmse = rmse
+        else:
+            nrmse = rmse / theoretical_max
 
         # calculate percentiles
         p = lambda q: np.percentile(imp_err, 0) if len(imp_err) else 0
