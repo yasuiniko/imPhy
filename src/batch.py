@@ -178,18 +178,22 @@ def impute(batch_folder, data, solutions, batch_base, methods):
         else:
             logger.debug("Failed to find imputed file with method name {}.".format(imputed))
 
+        renamed = False
         try:
             logger.debug("Attempting to move file with os.rename():")
             os.rename(imputed, imputed_with_method)
             logger.debug("Successfully renamed solution file for basename '{}' and method '{}' with os.rename().".format(*args))
+            renamed = True
         except FileNotFoundError as e:
             logger.error("Failed to impute solution file for basename '{}' and method '{}' with os.rename().".format(*args))
-        try: 
-            logger.debug("Attempting to move file with shutil.move():")
-            shutil.move(imputed, imputed_with_method)
-            logger.debug("Successfully renamed solution file for basename '{}' and method '{}' with shutil.move().".format(*args))
-        except FileNotFoundError as e: 
-            logger.error("Failed to impute solution file for basename '{}' and method '{}' with shutil.move().".format(*args))
+        
+        if not renamed:
+            try: 
+                logger.debug("Attempting to move file with shutil.move():")
+                shutil.move(imputed, imputed_with_method)
+                logger.debug("Successfully renamed solution file for basename '{}' and method '{}' with shutil.move().".format(*args))
+            except FileNotFoundError as e: 
+                logger.error("Failed to impute solution file for basename '{}' and method '{}' with shutil.move().".format(*args))
 
         open(imputed_with_method, 'a').close()
 
