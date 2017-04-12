@@ -334,9 +334,6 @@ def leaf_stats(solution_file, true_file, batch_folder, dists=[]):
 
     # calculations
     err = imp_dists - og_dists
-    print((err == 0).all())
-    print(solution_file)
-    print(true_file)
 
     return calc(err, sol_file=solution_file), err
 
