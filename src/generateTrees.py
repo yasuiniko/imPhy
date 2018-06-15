@@ -52,7 +52,8 @@ def species_tree(species, sp_depth):
     Make a species tree and adjust the length of the edges to match the
     desired species depth.
     """
-    t = bd_tree(birth_rate=1.0, death_rate=0, taxon_namespace=species)
+    t = bd_tree(birth_rate=1.0, death_rate=0, taxon_namespace=species,
+                num_extant_tips=len(species))
     
     # # convert distances to Decimals
     # for e in t.preorder_edge_iter():
