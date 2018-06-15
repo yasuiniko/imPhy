@@ -9,7 +9,7 @@ class Settings:
     t_genes = [3]                     # number of genes
     t_inds = [8]                      # number of individuals per species
     t_methods = [1]                   # imputation methods to use
-    t_probs = [4]                    # leaf dropping probabilities/denominators
+    t_probs = [4]                     # leaf dropping probabilities/denominators
     t_species = [4]                   # number of species 
     t_trees = [1]                     # number of species trees
     t_pop_sizes = [10000]             # effective population size
@@ -27,14 +27,14 @@ class Settings:
     Experiment variables.
     """
     e_c = [0]                         # c ratio
-    e_genes = [4524]                  # number of genes
-    e_inds = [27]                     # number of individuals per species
+    e_genes = [252]                  # number of genes
+    e_inds = [8]                     # number of individuals per species
     e_methods = [1]                   # imputation methods to use
     e_probs = [4, 8, 16]              # leaf dropping probabilities/denominators
-    e_species = [6]                   # number of species 
+    e_species = [5]                   # number of species
     e_trees = [1]                     # number of species trees
     e_pop_sizes = [0]                 # effective population size
-    e_dists = ['bhv', 'rh', 'norm']   # distances to use
+    e_dists = ['bhv', 'rf', 'norm']   # distances to use
 
     # convert c list from integers to floats
     e_c = list(map(float, e_c))
@@ -63,6 +63,15 @@ class Settings:
                  dists,
                  flow_dict,
                  depths=[]):
+
+        for d in dists:
+            if d not in ['bhv', 'rf', 'norm']:
+                raise RuntimeError(f"Invalid distance metric:{d}.")
+
+        if max(probs) > max(inds):
+            raise RuntimeWarning(f"Leaf dropping probability {max(probs)} "
+                                 f"will drop 0 leaves from a tree with "
+                                 f"{max(inds)} species.")
 
         self.c = list(map(float, c))
         self.genes = genes

@@ -33,6 +33,7 @@ from batch import run_batch
 import settings
 import tools
 
+
 def setup(batch_folder, methods, probs, flow_dict, dists, force, tup):
 
     species_depth, n_gene_trees, n_ind, Ne, n_sp, n_sp_trees = tup
@@ -49,6 +50,7 @@ def setup(batch_folder, methods, probs, flow_dict, dists, force, tup):
               dists=dists,
               flow_dict=flow_dict,
               force=force)
+
 
 if __name__ == "__main__":
     args = docopt.docopt(__doc__)

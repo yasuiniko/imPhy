@@ -1,23 +1,28 @@
 
 
 imPhy
-=
+=====
 
 Welcome! imPhy is a small [Python][python] and [R][r] pipeline for simulating, imputing, and analyzing phylogenetic trees. The main purpose of imPhy is to assess the effectiveness of methods imputing the positions of missing leaves in bifurcating trees. Effectiveness is measured by the distance between the original simulated trees and the imputed trees, using Robinson-Foulds and Billera-Holmes-Vogtmann (BHV) distances. Unless only a small number of trees are being imputed, it is recommended to run imPhy on a server.
 
-imPhy's many moving parts makes it both powerful and buggy. and will be developed very slowly, if at all, so this repository is intended as a proof of concept and record for other researchers who would like to implement a similar pipeline. 
+Python is used to generate data and organize files, while R is used to remove some data to simulate missingness, and to make plots. If you have your own data and plotting software, there is no need to use R. Similarly, C++ is used to run our imputation method, but you can use your own imputation code in imPhy without interfacing with C++. 
+
+In the future, imPhy will be developed very slowly, if at all, so this repository is intended as a proof of concept and record for other researchers who would like to implement a similar pipeline. 
 
 ---
 
 Quick Start Guide
--
+-----------------
 Each file uses docopt, so running the file with `-h` will bring up a help guide if you need it.
  1. Clone this repository. 
  2. Install [dependencies](#Dependencies).
  3. Switch directories, using `cd imPhy/src/`. It is safest to run the files from this directory.
  4. Edit `imPhy/src/cpp/Makefile` to match your Gurobi installation and C++ compiler, and run `make`.
- 5. Run a test experiment, with `python3 experiment.py -td test`. This will fail if you are missing dependencies. If it works, your data will be in `imPhy/test/`.
- 6. Congratulations! You can now run your own experiments by editing the "experimental setup" section in `experiment.py`. A good starting command is `python3 experiment.py -pd my_experiment`.
+    - If you would prefer to use your own imputation method, `cp` your imputation file to `imPhy/src/cpp/missing1.o`. It does not have to be written in C++, but for now the file will have to be named missingX.o, and run using the command `./missingX.o infile outfile`.
+    - Please ensure that the input and output of your file correspond to the file APIs described in `imPhy/src/cpp/examples/`.
+ 6. You can now run your own experiments by editing `imPhy/src/settings.py`. A good starting command is `python3 experiment.py -dfp apicomplexa`, which will run the pipeline on the Apicomplexa dataset.
+    - Notably, the "Testing Variables" section of `imPhy/src/settings.py` will be used if the `-t` flag is passed to `imPhy/src/experiment.py`. Otherwise, the "Experiment Variables" settings will be used.
+    - To use a different imputation method, modify the `methods` variables in `imPhy/src/settings.py`. A list of [1, 2] corresponds to imputing with both the `missing1.o` and `missing2.o` files.
 
 
 Features
@@ -54,7 +59,7 @@ There are 5 main steps in the imPhy pipeline, which can all by run from the `exp
 5. Statistics
    - This section creates CSV files containing information about the distances between imputed and original leaves and trees. Files created in this step are located in `imPhy/my_experiment/`.
 6. Plots
-   - This section can also create some diagnostic plots in R, and make heatmaps of some small instances, to solidify imputation quality intuition if the [dependencies](#Dependencies) are installed. Files created in this step are located in `imPhy/my_experiment/` as well as `imPhy/my_experiment/heatmaps/`.
+   - This section can create some diagnostic plots in R and make heatmaps of small instances. These plots are useful as a sanity check for imputation quality, but can only be used if the [dependencies](#Dependencies) are installed. Files created in this step are located in `imPhy/my_experiment/` as well as `imPhy/my_experiment/heatmaps/`.
 
 Other Features:
 
@@ -65,7 +70,7 @@ When big jobs are run on servers, it can be difficult to identify failure points
 
 
 Dependencies
--
+------------
 This code has only been tested on Python 3.5 and R 3.3. Other functions *may* break when using previous versions. [Anaconda][conda] is recommended to install Python and its packages. It can also be used to install R, but is not as well supported as Anaconda for Python.
 
 Python Packages:
@@ -86,14 +91,14 @@ R Packages:
 
 Others:
  - [Gurobi][gurobi]
- - [Java][java] (at least SE 1.8.0_31)
+ - [Java][java] (at least SE Development Kit 1.8.0_31)
 
 Contact
--
+-------
 Feel free to contact me on GitHub via the imPhy repo, at https://github.com/yasuiniko/imPhy. Problems can be reported using the Issues tab. 
 
 File Structure
--
+--------------
 ```
 imPhy
 │   License.md
@@ -133,7 +138,7 @@ imPhy
 ```
 
 Acknowledgements
--
+----------------
 I'd like to thank [Dr. Yoshida][yoshida] for her leadership and excellent advice, [Dr. Fukumizu][fukumizu] for his sharp insight and for generously hosting me, and [Dr. Vogiatzis][vogiatzis] for his constant support and development of the C++ imputation software. This software would not be possible without their great efforts.
 
 
@@ -148,7 +153,7 @@ I'd like to thank [Dr. Yoshida][yoshida] for her leadership and excellent advice
   [fukumizu]: http://www.ism.ac.jp/~fukumizu/ "Dr. Kenji Fukumizu"
   [gtp]: http://comet.lehman.cuny.edu/owen/code.html "GTP"
   [gurobi]: http://www.gurobi.com/ "Gurobi"
-  [java]: https://java.com/en/ "Java"
+  [java]: http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html "Java"
   [lattice]: https://cran.r-project.org/web/packages/lattice/index.html "lattice"
   [np]: http://www.numpy.org/ "numpy"
   [plt]: http://matplotlib.org/ "matplotlib"
