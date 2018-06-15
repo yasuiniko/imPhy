@@ -60,6 +60,10 @@ suppressWarnings(corrplot(cor(data[,-1][,-4], use="complete.obs"), type='upper')
 d <- Reduce(function (...) merge(..., all=T), 
             lapply(names(data)[-(8:14)][-1], get_outliers_of(data)))
 
-plot_to(paste0(opts$exp_folder, "/outlier_counts.pdf"))(d)
+if (length(d[1]) > 1) {
+    plot_to(paste0(opts$exp_folder, "/outlier_counts.pdf"))(d)
+} else {
+    print('outliers.R: Could not determine outliers.')
+}
 
 invisible(file.remove("Rplots.pdf"))
