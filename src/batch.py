@@ -52,6 +52,7 @@ from compile_stats import analyze
 from generateTrees import generateTrees
 from tools import ext, ext_len, gzip_to, gunzip_to, timeit, get_output
 
+
 def generate(nexus, d, n_gene_trees, n_sp, n_ind, Ne, n_sp_trees):
     
     # call generate trees
@@ -63,6 +64,7 @@ def generate(nexus, d, n_gene_trees, n_sp, n_ind, Ne, n_sp_trees):
                               n_sp_trees,
                               nexus)
     timeit(f, "generating trees", logging.getLogger("generate_trees"))
+
 
 def drop(batch_folder, nexus, data, n_sp, prob_missing, force):
     
@@ -105,6 +107,7 @@ def drop(batch_folder, nexus, data, n_sp, prob_missing, force):
     f = lambda: list(map(call_R, itertools.product(prob_missing, basenames)))
     timeit(f, "dropping leaves", logging.getLogger("drop"))
 
+
 def impute(batch_folder, data, solutions, batch_base, methods):
     """
     Imputes the batch.
@@ -130,19 +133,16 @@ def impute(batch_folder, data, solutions, batch_base, methods):
             """
             logger = logging.getLogger("impute")
             try:
-                p = Popen([program, nameroot], 
-                                     stdout=PIPE,
-                                     stderr=PIPE)
+                p = Popen([program, nameroot], stdout=PIPE, stderr=PIPE)
                 output, err = p.communicate()
                 
                 if output:
-                    logger.debug("Output of {}: {}".format([program, nameroot],
-                                                           output))
+                    logger.debug(f"Output of {[program, nameroot]}: {output}")
 
             except CalledProcessError:
                 p.terminate()
-                logger.error("Imputation error for basename '{}'".format(args[0]) + 
-                         " using method '{}'.".format(args[1]))
+                logger.error(f"Imputation error for basename '{args[0]}'" +
+                             f" using method '{args[1]}'.")
 
             except OSError as e:
                 logger.error("OSError while imputing {}".format(nameroot))
@@ -185,7 +185,7 @@ def impute(batch_folder, data, solutions, batch_base, methods):
             logger.debug("Successfully renamed solution file for basename '{}' and method '{}' with os.rename().".format(*args))
             renamed = True
         except FileNotFoundError as e:
-            logger.error("Failed to impute solution file for basename '{}' and method '{}' with os.rename().".format(*args))
+            logger.error("Failed to rename solution file for basename '{}' and method '{}' with os.rename().".format(*args))
         
         if not renamed:
             try: 
@@ -193,7 +193,7 @@ def impute(batch_folder, data, solutions, batch_base, methods):
                 shutil.move(imputed, imputed_with_method)
                 logger.debug("Successfully renamed solution file for basename '{}' and method '{}' with shutil.move().".format(*args))
             except FileNotFoundError as e: 
-                logger.error("Failed to impute solution file for basename '{}' and method '{}' with shutil.move().".format(*args))
+                logger.error("Failed to rename solution file for basename '{}' and method '{}' with shutil.move().".format(*args))
 
         open(imputed_with_method, 'a').close()
 
