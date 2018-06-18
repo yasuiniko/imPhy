@@ -1,0 +1,21 @@
+#!/bin/bash
+
+# Wrapper for running non-C imputation code
+# This file is part of imPhy, a pipeline for evaluating the quality of
+# phylogenetic imputation software.
+# Copyright © 2016 Niko Yasui, Chrysafis Vogiatzis
+
+# Usage: ./missing9.o input_file
+
+my_imputation_call="python3 my_imputation.py"
+
+if [ -n "$1" ]
+# Test whether command-line argument is present (non-empty).
+then
+  input_file=$1
+else
+  echo "Must specify an input file"
+  exit 1
+fi
+
+$my_imputation_call $input_file

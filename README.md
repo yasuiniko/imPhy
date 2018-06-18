@@ -26,10 +26,10 @@ Each file uses docopt, so running the file with `-h` will bring up a help guide 
 
 
 Features
--
-There are 5 main steps in the imPhy pipeline, which can all by run from the `experiment.py` file. There is also  a 6th step to make diagnostic plots , which requires a functional matplotlib installation to run, so is usually best run on a local machine. 
+--------
+There are four main modules in the imPhy pipeline. They can all be run from the `experiment.py`, by modifying the `flow_dict` variables in `imPhy/src/settings.py`.
 
-1. Tree Generation
+1. Tree Generation (Python only)
    - Creates trees with [DendroPy][dp], a very useful phylogenetic library for Python. ImPhy uses the Yule process to create species trees, and the contained coalescent model to create gene trees. Trees are written to `imPhy/my_experiment/batch_A/nexus/`.
    - Parameters:
 	 - Species Depth: Height in generations of the species tree. Calculated by `(Effective Population Size) * (C-ratio)`.
@@ -39,27 +39,30 @@ There are 5 main steps in the imPhy pipeline, which can all by run from the `exp
 	 - Number of Species: Number of leaves in the species tree.
 	 - Number of Gene Trees: This many gene trees will be coalesced within each species tree. More gene trees means more information for the imputation software, but higher memory requirements.
 	 - Number of Individuals per Species: Controls the number of leaves in each gene tree, which is equal to `(Num Individuals per Species) * (Num Species)`
-2. Dropping Leaves
+2. Dropping Leaves (R only)
    - To impute leaves (individuals), some must be missing. For this purpose imPhy uses the [APE][ape] package in R. There are two methods for choosing the number of leaves to drop, which are chosen automatically based on the value of the leaf dropping parameter p. The identities of leaves to be dropped are chosen randomly regardless of which method is chosen. In `experiment.py`, p is set using the `probs` list. Trees are written to `imPhy/my_experiment/batch_A/data/` in the data format found in `imPhy/src/cpp/examples/`, which uses vectorized distance matrices.
 	 - p < 1 causes p to be interpreted as the probability of success (dropping a leaf) in a binomial distribution with size equal to the number of leaves in the tree. A single draw is made from the distribution, which serves as the number of leaves to drop from the tree.
 	 - p >= 1 will result in 1/p of the leaves in a given tree being dropped. If the resulting number is not an integer, it will be rounded.
-3. Imputation
-   - Imputation is carried out using mutual information from multiple gene trees that have coalesced on the same species tree. [Gurobi][gurobi] and [C++][cpp] are used to impute leaves, so it is necessary to have a valid Gurobi installation and to make the C++ file on the machine it will be run on. The imputation software should be easy to change without damaging the rest of the pipeline, provided its inputs and outputs are maintained.
+3. Imputation (Python and the imputation language)
+   - Imputation can be performed using any file that matches `missingX.o`. A bash wrapper for imputation techniques that are not written in C++ is included in `imPhy/src/cpp/missing9.o`.
+   - Our imputation method uses mutual information from multiple gene trees that have coalesced on the same species tree. [Gurobi][gurobi] and [C++][cpp] are used to impute leaves, so it is necessary to have a valid Gurobi installation and to compile the C++ file on the machine it will be run on. The imputation software can be swapped out with another file without impacting the rest of the pipeline, provided the inputs and outputs are of the same format.
 	 - Inputs go to `src/cpp/data/`, and outputs go to `src/cpp/sol/`.
 	 - Examples can be found in `src/cpp/examples/`.
 	 - For best results, name your imputation code `missingX.o`, where X is a number. Then, in `experiment.py`, the methods list can be set as:
-	 >\# impute using imPhy/src/cpp/missingX.o
+	 >\# impute using imPhy/src/cpp/missingX.o \
 	 >methods = [X]
 	 >
-	 >\# impute using imPhy/src/cpp/missingX.o and 
-	 > \# imPhy/src/cpp/missing1.o
+	 >\# impute using imPhy/src/cpp/missingX.o and \
+	 > \# imPhy/src/cpp/missing1.o \
 	 >methods = [X, 1]
-4. Analysis
-   - In the analysis section, DendroPy is used to take the Robinson-Foulds distance between original trees and their imputed siblings, while Owen and Provan's [GTP code][gtp] is used to calculate the BHV geodesic. Files containing information about these distances are written to `imPhy/my_experiment/batch_A/stats/`. If the next step is impossible to run, these files can still provide interesting information after a bit of file gymnastics. Headers are included in the CSVs.
-5. Statistics
-   - This section creates CSV files containing information about the distances between imputed and original leaves and trees. Files created in this step are located in `imPhy/my_experiment/`.
-6. Plots
-   - This section can create some diagnostic plots in R and make heatmaps of small instances. These plots are useful as a sanity check for imputation quality, but can only be used if the [dependencies](#Dependencies) are installed. Files created in this step are located in `imPhy/my_experiment/` as well as `imPhy/my_experiment/heatmaps/`.
+4. Analysis (Python, R, and Java)
+   - In the analysis section, DendroPy is used to take the Robinson-Foulds distance between original trees and their imputed siblings, while Owen and Provan's [GTP code][gtp] is used to calculate the BHV geodesic. Files containing information about these distances are written to `imPhy/my_experiment/batch_A/stats/`. If the next step is impossible to run, these files can still provide interesting information. Headers are included in the CSVs.
+   
+    CSV files (Python only)
+   - The CSV files contain information about the distances between imputed and original leaves and trees. Files created in this step are located in `imPhy/my_experiment/`.
+    
+    Diagnostic Plots (R only)
+   - This step can be run by passing the `-d` flag to `experiment.py`. These plots are useful as a sanity check for imputation quality, but can only be used if the [dependencies](#Dependencies) are installed. Files created in this step are located in `imPhy/my_experiment/` as well as `imPhy/my_experiment/heatmaps/`. The plots are most useful for smaller experiments.
 
 Other Features:
 
